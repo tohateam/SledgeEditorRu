@@ -1,0 +1,177 @@
+﻿{
+    "@Meta": {
+        "Base": "Sledge.BspEditor.Editing", 
+        "Language": "en",
+        "Inherit": ""
+    },
+    "@Settings": {
+        
+    },
+    "Commands": {
+        "EditVisgroups": {
+            "Name": "Edit visgroups",
+            "Details": "View and edit map visgroups."
+        },
+        "OpenAboutWindow": {
+            "Name": "About Sledge",
+            "Details": "View information about this application."
+        },
+        "OpenObjectProperties": {
+            "Name": "Object properties",
+            "Details": "Open the object properties window."
+        },
+        "PasteSpecial": {
+            "Name": "Paste special...",
+            "Details": "Paste multiple copies with a transformation applied."
+        },
+        "Carve": {
+            "Name": "Carve",
+            "Details": "Carve the selection into any brushes it overlaps. (Use with caution)"
+        },
+        "Hollow": {
+            "Name": "Make hollow...",
+            "Details": "Make the selected solids hollow. (Use with caution)",
+            "PromptTitle": "Select wall width",
+            "PromptWallWidth": "Wall width (negative to hollow outwards)",
+            "WarningMessage": "This will hollow all {0} solids that are selected.",
+            "OK": "OK",
+            "Cancel": "Cancel"
+        },
+        "Transform": {
+            "Name": "Transform...",
+            "Details": "Transform the current selection.",
+            "ErrorCannotScaleByZeroTitle": "Cannot scale by zero",
+            "ErrorCannotScaleByZeroMessage": "Please enter a non-zero value for all axes when scaling."
+        },
+        "TieToEntity": {
+            "Name": "Tie to entity",
+            "Details": "Create an entity out of the currently selected objects.",
+            "EntitySelectedTitle": "Entity already selected",
+            "OneEntitySelectedMessage": "You have selected an existing entity (a '{0}'), how would you like to proceed?\n - Keep the existing entity and add the selected items to the entity\n - Create a new entity and add the selected items to the new entity",
+            "MultipleEntitiesSelectedMessage": "You have selected multiple entities, which one would you like to keep?",
+            "KeepExisting": "Keep existing",
+            "CreateNew": "Create new",
+            "OK": "OK",
+            "Cancel": "Cancel"
+        },
+        "Toggles": {
+            "ToggleTextureLock": {
+                "Name": "Texture Lock",
+                "Details": "Toggle texture locking for uniform operations (transform, rotate)."
+            },
+            "ToggleTextureScalingLock": {
+                "Name": "Texture Scaling Lock",
+                "Details": "Toggle texture locking for scale operations."
+            }
+        } 
+    },
+    "Components": {
+        "Properties": {
+            "ObjectPropertiesDialog": {
+                "Apply": "Apply",
+                "OK": "OK",
+                "Cancel": "Cancel",
+                "ResetUnsavedChanges": "Reset unsaved changes",
+                "UnsavedChanges": "Changes have not been saved",
+                "DoYouWantToSaveFirst": "There are unsaved changes. Do you want to save them?"
+            },
+            "Tabs": {
+                "EmptyTab": {
+                    "NothingIsSelected": "Nothing is currently selected."
+                }, 
+                "VisgroupTab": {
+                    "Name": "Visgroups",
+                    "MemberOfGroup": "Member of group:",
+                    "EditVisgroups": "Edit Visgroups"
+                },
+                "ClassInfoTab": {
+                    "Name": "Class Info",
+                    "ClassLabel": "Class:",
+                    "KeyValuesLabel": "Keyvalues:",
+                    "PropertyNameLabel": "Property Name",
+                    "PropertyValueLabel": "Value",
+                    "HelpLabel": "Help:",
+                    "CommentsLabel": "Comments:",
+                    "SmartEditButton": "Smart Edit",
+                    "HelpButton": "Help",
+                    "CopyButton": "Copy",
+                    "PasteButton": "Paste",
+                    "AddButton": "Add",
+                    "DeleteButton": "Delete",
+                    "MultipleClassesText": "<multiple classes>",
+                    "MultipleValuesText": "<multiple values>"
+                },
+                "FlagsTab": {
+                    "Name": "Flags"
+                }
+            }
+        }, 
+        "Visgroup": {
+            "VisgroupEditForm": {
+                "Title": "Visgroup Editor",
+                "NameLabel": "Name",
+                "ColorLabel": "Colour (click to change)",
+                "AddButton": "Add group",
+                "RemoveButton": "Remove group",
+                "OkButton": "OK",
+                "CancelButton": "Cancel"
+            },
+            "VisgroupSidebarPanel": {
+                "EditButton": "Edit",
+                "SelectButton": "Select",
+                "ShowAllButton": "Show all",
+                "NewButton": "New"
+            }
+        },
+        "AboutDialog": {
+
+        },
+        "CheckForProblemsDialog": {
+            "Title": "Problems in Map",
+            "Details": "Details",
+            "GoToError": "Go to error",
+            "FixError": "Fix error",
+            "FixAllOfType": "Fix all of type",
+            "FixAll": "Fix all problems",
+            "VisibleObjectsOnly": "Visible objects only",
+            "CloseButton": "Close"
+        },
+        "PasteSpecialDialog": {
+            "Title": "Paste Special",
+            "NumberOfCopies": "Number of copies to paste:",
+            "StartPoint": "Start point",
+            "StartAtOrigin": "Start at map origin",
+            "StartAtCenterOfOriginal": "Start at center of original",
+            "StartAtCenterOfSelection": "Start at center of current selection",
+            "Grouping": "Grouping",
+            "NoGrouping": "No grouping",
+            "GroupIndividual": "Group individual copies",
+            "GroupAll": "Group all copies",
+            "Offset": "Offset (accumulative)",
+            "Rotation": "Rotation (accumulative)",
+            "MakeEntityNamesUnique": "Make entity names unique",
+            "PrevixEntityNames": "Prefix named entities with:",
+            "OK": "OK",
+            "Cancel": "Cancel"
+        },
+        "TransformDialog": {
+            "Title": "Transform",
+            "Source": "Source",
+            "Rotate": "Rotate",
+            "Translate": "Translate",
+            "Scale": "Scale",
+            "OK": "OK",
+            "Cancel": "Cancel"
+        },
+        "Compile": {
+            "CompileOutputComponent": {
+                "Title": "Compile",
+                "CompileCompletedSuccessfully": "Compile was successful.",
+                "CompileFailed": "Compile failed. Check the message log for more details."
+            },
+            "CompileDialog": {
+                
+            } 
+        }
+    } 
+}
