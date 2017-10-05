@@ -21,18 +21,19 @@ using Sledge.Editor.Actions.Visgroups;
 using Sledge.Editor.Clipboard;
 using Sledge.Editor.Compiling;
 using Sledge.Editor.Enums;
-using Sledge.Editor.Extensions;
 using Sledge.Editor.Rendering;
+using Sledge.Editor.Rendering.Helpers;
 using Sledge.Editor.Tools;
 using Sledge.Editor.Tools.SelectTool;
 using Sledge.Editor.UI;
 using Sledge.Editor.UI.ObjectProperties;
 using Sledge.Editor.Visgroups;
+using Sledge.Extensions;
 using Sledge.Providers.Texture;
 using Sledge.QuickForms;
 using Sledge.QuickForms.Items;
-using Sledge.Rendering.Cameras;
 using Sledge.Settings;
+using Sledge.UI;
 using Path = System.IO.Path;
 using Quaternion = Sledge.DataStructures.Geometric.Quaternion;
 
@@ -57,10 +58,6 @@ namespace Sledge.Editor.Documents
             Mediator.Subscribe(EditorMediator.DocumentTreeSelectedObjectsChanged, this);
             Mediator.Subscribe(EditorMediator.DocumentTreeFacesChanged, this);
             Mediator.Subscribe(EditorMediator.DocumentTreeSelectedFacesChanged, this);
-
-            Mediator.Subscribe(EditorMediator.SceneObjectsCreated, this);
-            Mediator.Subscribe(EditorMediator.SceneObjectsDeleted, this);
-            Mediator.Subscribe(EditorMediator.SceneObjectsUpdated, this);
 
             Mediator.Subscribe(EditorMediator.SettingsChanged, this);
 
@@ -153,6 +150,8 @@ namespace Sledge.Editor.Documents
             Mediator.Subscribe(EditorMediator.SetZoomValue, this);
             Mediator.Subscribe(EditorMediator.TextureSelected, this);
             Mediator.Subscribe(EditorMediator.SelectMatchingTextures, this);
+
+            Mediator.Subscribe(EditorMediator.ViewportCreated, this);
         }
 
         public void Unsubscribe()
@@ -169,7 +168,7 @@ namespace Sledge.Editor.Documents
                 if (result == HotkeyInterceptResult.Abort) return;
                 if (result == HotkeyInterceptResult.SwitchToSelectTool)
                 {
-                    ToolManager.Activate(HotkeyTool.Selection);
+                    ToolManager.Activate(typeof(SelectTool));
                 }
             }
             if (!Mediator.ExecuteDefault(this, message, data))
@@ -180,22 +179,6 @@ namespace Sledge.Editor.Documents
 
         // ReSharper disable UnusedMember.Global
         // ReSharper disable MemberCanBePrivate.Global
-
-
-        private void SceneObjectsCreated(IEnumerable<MapObject> objects)
-        {
-            _document.SceneManager.Create(objects.SelectMany(x => x.FindAll()).ToList());
-        }
-
-        private void SceneObjectsDeleted(IEnumerable<MapObject> objects)
-        {
-            _document.SceneManager.Delete(objects.SelectMany(x => x.FindAll()).ToList());
-        }
-
-        private void SceneObjectsUpdated(IEnumerable<MapObject> objects)
-        {
-            _document.SceneManager.Update(objects.SelectMany(x => x.FindAll()).ToList());
-        }
 
         private void DocumentTreeStructureChanged()
         {
@@ -209,7 +192,7 @@ namespace Sledge.Editor.Documents
 
         private void DocumentTreeSelectedObjectsChanged(IEnumerable<MapObject> objects)
         {
-            _document.RenderObjects(objects);
+            _document.RenderSelection(objects);
         }
 
         private void DocumentTreeFacesChanged(IEnumerable<Face> faces)
@@ -219,14 +202,14 @@ namespace Sledge.Editor.Documents
 
         private void DocumentTreeSelectedFacesChanged(IEnumerable<Face> faces)
         {
-            _document.RenderFaces(faces);
+            _document.RenderSelection(faces.Select(x => x.Parent).Distinct());
         }
 
         public void SettingsChanged()
         {
-            _document.UpdateRendererSettings();
+            _document.HelperManager.UpdateCache();
+            RebuildGrid();
             _document.RenderAll();
-            SceneManager.UpdateRendererSettings();
         }
 
         public void HistoryUndo()
@@ -334,6 +317,11 @@ namespace Sledge.Editor.Documents
             var list = content.ToList();
             if (!list.Any()) return;
 
+            foreach (var face in list.SelectMany(x => x.FindAll().OfType<Solid>().SelectMany(y => y.Faces)))
+            {
+                face.Texture.Texture = _document.GetTexture(face.Texture.Name);
+            }
+
             var box = new Box(list.Select(x => x.BoundingBox));
 
             using (var psd = new PasteSpecialDialog(box))
@@ -388,9 +376,13 @@ namespace Sledge.Editor.Documents
             if (_document.Selection.IsEmpty() || _document.Selection.InFaceSelection || Editor.Instance == null) return;
             var texture = _document.TextureCollection.SelectedTexture;
             if (texture == null) return;
+            var ti = texture.GetTexture();
+            if (ti == null) return;
             Action<Document, Face> action = (document, face) =>
             {
-                face.Texture.Name = texture;
+                face.Texture.Name = texture.Name;
+                face.Texture.Texture = ti;
+                face.CalculateTextureCoordinates(true);
             };
             var faces = _document.Selection.GetSelectedObjects().OfType<Solid>().SelectMany(x => x.Faces);
             _document.PerformAction("Apply current texture", new EditFace(faces, action, true));
@@ -637,9 +629,8 @@ namespace Sledge.Editor.Documents
         public void RotateClockwise()
         {
             if (_document.Selection.IsEmpty() || _document.Selection.InFaceSelection) return;
-            var focused = ViewportManager.GetActiveViewport();
+            var focused = ViewportManager.Viewports.FirstOrDefault(x => x.IsFocused && x is Viewport2D) as Viewport2D;
             if (focused == null) return;
-
             var center = new Box(_document.Selection.GetSelectedObjects().Select(x => x.BoundingBox).Where(x => x != null)).Center;
             var axis = focused.GetUnusedCoordinate(Coordinate.One);
             var transform = new UnitRotate(DMath.DegreesToRadians(90), new Line(center, center + axis));
@@ -650,9 +641,8 @@ namespace Sledge.Editor.Documents
         public void RotateCounterClockwise()
         {
             if (_document.Selection.IsEmpty() || _document.Selection.InFaceSelection) return;
-            var focused = ViewportManager.GetActiveViewport();
+            var focused = ViewportManager.Viewports.FirstOrDefault(x => x.IsFocused && x is Viewport2D) as Viewport2D;
             if (focused == null) return;
-
             var center = new Box(_document.Selection.GetSelectedObjects().Select(x => x.BoundingBox).Where(x => x != null)).Center;
             var axis = focused.GetUnusedCoordinate(Coordinate.One);
             var transform = new UnitRotate(DMath.DegreesToRadians(-90), new Line(center, center + axis));
@@ -777,8 +767,7 @@ namespace Sledge.Editor.Documents
 
         public void RebuildGrid()
         {
-            _document.RenderObjects(new [] { _document.Map.WorldSpawn });
-            _document.UpdateRendererSettings();
+            _document.Renderer.UpdateGrid(_document.Map.GridSpacing, _document.Map.Show2DGrid, _document.Map.Show3DGrid, true);
             Mediator.Publish(EditorMediator.DocumentGridSpacingChanged, _document.Map.GridSpacing);
         }
 
@@ -796,7 +785,7 @@ namespace Sledge.Editor.Documents
         {
             var box = _document.Selection.GetSelectionBoundingBox()
                       ?? new Box(Coordinate.Zero, Coordinate.Zero);
-            foreach (var vp in ViewportManager.Viewports.Where(x => x.Is2D))
+            foreach (var vp in ViewportManager.Viewports.OfType<Viewport2D>())
             {
                 vp.FocusOn(box);
             }
@@ -806,7 +795,7 @@ namespace Sledge.Editor.Documents
         {
             var box = _document.Selection.GetSelectionBoundingBox()
                       ?? new Box(Coordinate.Zero, Coordinate.Zero);
-            foreach (var vp in ViewportManager.Viewports.Where(x => x.Is3D))
+            foreach (var vp in ViewportManager.Viewports.OfType<Viewport3D>())
             {
                 vp.FocusOn(box);
             }
@@ -872,13 +861,11 @@ namespace Sledge.Editor.Documents
                 var end = _document.Pointfile.Lines.LastOrDefault();
                 if (end == null) return;
 
-                var pc = ViewportManager.Viewports.Select(x => x.Viewport.Camera).OfType<PerspectiveCamera>().FirstOrDefault();
-                if (pc == null) return;
+                var vp = ViewportManager.Viewports.OfType<Viewport3D>().FirstOrDefault();
+                if (vp == null) return;
 
-                pc.Position = end.End.ToVector3();
-                pc.LookAt = end.Start.ToVector3();
-
-                _document.RenderObjects(new[] { _document.Map.WorldSpawn });
+                vp.Camera.Location = new Vector3((float)end.End.DX, (float)end.End.DY, (float)end.End.DZ);
+                vp.Camera.LookAt = new Vector3((float)end.Start.DX, (float)end.Start.DY, (float)end.Start.DZ);
             }
             catch
             {
@@ -928,7 +915,6 @@ namespace Sledge.Editor.Documents
         public void UnloadPointfile()
         {
             _document.Pointfile = null;
-            _document.RenderObjects(new[] { _document.Map.WorldSpawn });
         }
 
         public void ToggleSnapToGrid()
@@ -952,7 +938,7 @@ namespace Sledge.Editor.Documents
                 MessageBox.Show("The 3D grid is only available when the OpenGL 3.0 renderer is used.");
                 _document.Map.Show3DGrid = false;
             }
-            RebuildGrid();
+            _document.Renderer.UpdateGrid(_document.Map.GridSpacing, _document.Map.Show2DGrid, _document.Map.Show3DGrid, false);
             Mediator.Publish(EditorMediator.UpdateToolstrip);
         }
 
@@ -978,20 +964,19 @@ namespace Sledge.Editor.Documents
         public void ToggleCordon()
         {
             _document.Map.Cordon = !_document.Map.Cordon;
-            _document.RenderObjects(new [] { _document.Map.WorldSpawn });
             Mediator.Publish(EditorMediator.UpdateToolstrip);
         }
 
         public void ToggleHideFaceMask()
         {
             _document.Map.HideFaceMask = !_document.Map.HideFaceMask;
-            _document.RenderSelection();
+            _document.Renderer.UpdateDocumentToggles();
         }
 
         public void ToggleHideDisplacementSolids()
         {
             _document.Map.HideDisplacementSolids = !_document.Map.HideDisplacementSolids;
-            _document.RenderAll();
+            // todo hide displacement solids
             Mediator.Publish(EditorMediator.UpdateToolstrip);
         }
 
@@ -1040,7 +1025,7 @@ namespace Sledge.Editor.Documents
             }
         }
 
-        public void ViewportRightClick(MapViewport vp, ViewportEvent e)
+        public void ViewportRightClick(Viewport2D vp, ViewportEvent e)
         {
             ViewportContextMenu.Instance.AddNonSelectionItems(_document, vp);
             if (!_document.Selection.IsEmpty() && !_document.Selection.InFaceSelection && ToolManager.ActiveTool is SelectTool)
@@ -1056,7 +1041,7 @@ namespace Sledge.Editor.Documents
                 }
             }
             if (ToolManager.ActiveTool != null) ToolManager.ActiveTool.OverrideViewportContextMenu(ViewportContextMenu.Instance, vp, e);
-            if (ViewportContextMenu.Instance.Items.Count > 0) ViewportContextMenu.Instance.Show(vp.Control, e.X, e.Y);
+            if (ViewportContextMenu.Instance.Items.Count > 0) ViewportContextMenu.Instance.Show(vp, e.X, e.Y);
         }
 
         public void VisgroupSelect(int visgroupId)
@@ -1126,16 +1111,25 @@ namespace Sledge.Editor.Documents
 
         public void SetZoomValue(decimal value)
         {
-            foreach (var vp in ViewportManager.Viewports.Select(x => x.Viewport.Camera).OfType<OrthographicCamera>())
+            foreach (var vp in ViewportManager.Viewports.OfType<Viewport2D>())
             {
-                vp.Zoom = (float) value;
+                vp.Zoom = value;
             }
             Mediator.Publish(EditorMediator.ViewZoomChanged, value);
         }
 
-        public void TextureSelected(string selection)
+        public void TextureSelected(TextureItem selection)
         {
             _document.TextureCollection.SelectedTexture = selection;
+        }
+
+        public void ViewportCreated(ViewportBase viewport)
+        {
+            if (viewport is Viewport3D) viewport.RenderContext.Add(new WidgetLinesRenderable());
+            _document.Renderer.Register(new[] { viewport });
+            viewport.RenderContext.Add(new ToolRenderable());
+            viewport.RenderContext.Add(new HelperRenderable(_document));
+            _document.Renderer.UpdateGrid(_document.Map.GridSpacing, _document.Map.Show2DGrid, _document.Map.Show3DGrid, false);
         }
 
         public void SelectMatchingTextures(IEnumerable<string> textureList)

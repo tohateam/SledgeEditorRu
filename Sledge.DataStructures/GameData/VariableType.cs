@@ -31,12 +31,10 @@ namespace Sledge.DataStructures.GameData
         Other,
         ParticleSystem,
         PointEntityClass,
-        Scale, // Quake 3
         Scene,
         Script,
         ScriptList,
         SideList,
-        Sky, // Quake 2
         Sound,
         Sprite,
         String,

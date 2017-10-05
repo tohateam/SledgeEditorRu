@@ -1,13 +1,12 @@
 using System.Collections.Generic;
-using System.Drawing;
 using System.Linq;
 using Sledge.DataStructures.MapObjects;
 using Sledge.Editor.Actions;
 using Sledge.Editor.Actions.MapObjects.Operations;
+using Sledge.Providers.Texture;
 
 namespace Sledge.Editor.Problems
 {
-    /* todo fix this texture check
     public class TextureNotFound : IProblemCheck
     {
         public IEnumerable<Problem> Check(Map map, bool visibleOnly)
@@ -16,7 +15,7 @@ namespace Sledge.Editor.Problems
                 .Find(x => x is Solid && (!visibleOnly || (!x.IsVisgroupHidden && !x.IsCodeHidden)))
                 .OfType<Solid>()
                 .SelectMany(x => x.Faces)
-                .Where(x => x.Texture.Size.IsEmpty)
+                .Where(x => x.Texture.Texture == null)
                 .ToList();
             foreach (var name in faces.Select(x => x.Texture.Name).Distinct())
             {
@@ -35,11 +34,10 @@ namespace Sledge.Editor.Problems
                                                        if (def != null)
                                                        {
                                                            x.Texture.Name = def.Name;
-                                                           x.Texture.Size = new Size(def.Width, def.Height);
+                                                           x.Texture.Texture = def.GetTexture();
                                                            x.CalculateTextureCoordinates(true);
                                                        }
                                                    }, true);
         }
     }
-    */
 }

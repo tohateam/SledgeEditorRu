@@ -1,11 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Drawing;
+using System.Data;
 using System.Globalization;
 using System.Linq;
+using System.Net;
+using System.Text;
 using System.Windows.Forms;
-using Sledge.Common;
 using Sledge.Common.Extensions;
+using Sledge.Extensions;
 
 namespace Sledge.Editor.Compiling
 {
@@ -116,7 +120,7 @@ namespace Sledge.Editor.Compiling
         {
             public CompileParameter Parameter { get; private set; }
             public CheckBox CheckBox { get; private set; }
-            private Control _valueControl;
+            //private Control _valueControl;
 
             public event EventHandler ValueChanged;
 

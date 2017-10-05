@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Text;
 using Sledge.Editor.Documents;
 
 namespace Sledge.Editor.Actions

@@ -1,23 +1,31 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Drawing;
+using System.Data;
+using System.Linq;
+using System.Text;
 using System.Windows.Forms;
 using Sledge.Common.Mediator;
+using Sledge.Editor.Brushes;
+using Sledge.Editor.Tools.SelectTool.TransformationTools;
 using Sledge.Settings;
 
 namespace Sledge.Editor.Tools.SelectTool
 {
     public partial class SelectToolSidebarPanel : UserControl
     {
-        public delegate void ChangeTransformationToolEventHandler(object sender, SelectionBoxDraggableState.TransformationMode transformationMode);
+        public delegate void ChangeTransformationToolEventHandler(object sender, Type transformationToolType);
         public delegate void ToggleShow3DWidgetsEventHandler(object sender, bool show);
 
-        public event ChangeTransformationToolEventHandler ChangeTransformationMode;
+        public event ChangeTransformationToolEventHandler ChangeTransformationTool;
         public event ToggleShow3DWidgetsEventHandler ToggleShow3DWidgets;
 
-        protected virtual void OnChangeTransformationMode(SelectionBoxDraggableState.TransformationMode transformationMode)
+        protected virtual void OnChangeTransformationTool(Type transformationToolType)
         {
-            if (ChangeTransformationMode != null)
+            if (ChangeTransformationTool != null)
             {
-                ChangeTransformationMode(this, transformationMode);
+                ChangeTransformationTool(this, transformationToolType);
             }
         }
 
@@ -35,27 +43,37 @@ namespace Sledge.Editor.Tools.SelectTool
             Show3DWidgetsCheckbox.Checked = Sledge.Settings.Select.Show3DSelectionWidgets;
         }
 
-        private SelectionBoxDraggableState.TransformationMode _selectedType;
+        private Type _selectedType;
 
-        public void TransformationToolChanged(SelectionBoxDraggableState.TransformationMode tt)
+        public void TransformationToolChanged(TransformationTool tt)
         {
-            _selectedType = tt;
+            _selectedType = tt == null ? null : tt.GetType();
             SetCheckState();
         }
 
         private void SetCheckState()
         {
-            if (_selectedType == SelectionBoxDraggableState.TransformationMode.Resize)
+            if (_selectedType == null)
+            {
+                _selectedType = null;
+                RotateModeCheckbox.Enabled = SkewModeCheckbox.Enabled = TranslateModeCheckbox.Enabled = false;
+                RotateModeCheckbox.Checked = SkewModeCheckbox.Checked = TranslateModeCheckbox.Checked = false;
+                return;
+            }
+
+            RotateModeCheckbox.Enabled = SkewModeCheckbox.Enabled = TranslateModeCheckbox.Enabled = true;
+
+            if (_selectedType == typeof(ResizeTool))
             {
                 RotateModeCheckbox.Checked = SkewModeCheckbox.Checked = false;
                 TranslateModeCheckbox.Checked = true;
             }
-            else if (_selectedType == SelectionBoxDraggableState.TransformationMode.Rotate)
+            else if (_selectedType == typeof(RotateTool))
             {
                 TranslateModeCheckbox.Checked = SkewModeCheckbox.Checked = false;
                 RotateModeCheckbox.Checked = true;
             }
-            else if (_selectedType == SelectionBoxDraggableState.TransformationMode.Skew)
+            else if (_selectedType == typeof(SkewTool))
             {
                 RotateModeCheckbox.Checked = TranslateModeCheckbox.Checked = false;
                 SkewModeCheckbox.Checked = true;
@@ -64,19 +82,19 @@ namespace Sledge.Editor.Tools.SelectTool
 
         private void TranslateModeChecked(object sender, EventArgs e)
         {
-            if (TranslateModeCheckbox.Checked && _selectedType != SelectionBoxDraggableState.TransformationMode.Resize) OnChangeTransformationMode(SelectionBoxDraggableState.TransformationMode.Resize);
+            if (TranslateModeCheckbox.Checked && _selectedType != typeof(ResizeTool)) OnChangeTransformationTool(typeof(ResizeTool));
             else SetCheckState();
         }
 
         private void RotateModeChecked(object sender, EventArgs e)
         {
-            if (RotateModeCheckbox.Checked && _selectedType != SelectionBoxDraggableState.TransformationMode.Rotate) OnChangeTransformationMode(SelectionBoxDraggableState.TransformationMode.Rotate);
+            if (RotateModeCheckbox.Checked && _selectedType != typeof(RotateTool)) OnChangeTransformationTool(typeof(RotateTool));
             else SetCheckState();
         }
 
         private void SkewModeChecked(object sender, EventArgs e)
         {
-            if (SkewModeCheckbox.Checked && _selectedType != SelectionBoxDraggableState.TransformationMode.Skew) OnChangeTransformationMode(SelectionBoxDraggableState.TransformationMode.Skew);
+            if (SkewModeCheckbox.Checked && _selectedType != typeof(SkewTool)) OnChangeTransformationTool(typeof(SkewTool));
             else SetCheckState();
         }
 

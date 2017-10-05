@@ -1,8 +1,16 @@
-﻿using System.Globalization;
+﻿using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Drawing;
+using System.Globalization;
 using System.Linq;
+using System.Text;
 using System.Windows.Forms;
+using Sledge.DataStructures.GameData;
 using Sledge.DataStructures.MapObjects;
 using Sledge.Editor.Documents;
+using Sledge.Providers.Texture;
 
 namespace Sledge.Editor.UI
 {
@@ -26,9 +34,9 @@ namespace Sledge.Editor.UI
             var numSolidEnts = entities.Count(x => x.HasChildren);
             var uniqueTextures = faces.Select(x => x.Texture.Name).Distinct().ToList();
             var numUniqueTextures = uniqueTextures.Count;
-            var textureMemory = faces.Select(x => x.Texture.Name)
+            var textureMemory = faces.Select(x => x.Texture.Texture)
+                .Where(x => x != null)
                 .Distinct()
-                .Select(document.GetTextureSize)
                 .Sum(x => x.Width * x.Height * 3); // 3 bytes per pixel
             var textureMemoryMb = textureMemory / (1024m * 1024m);
             // todo texture memory, texture packages

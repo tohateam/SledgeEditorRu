@@ -132,7 +132,10 @@ namespace Sledge.Providers.Texture.Vtf
                 }
 
                 var mipNum = 0;
-                if (maxWidth > 0 || maxHeight > 0) mipNum = GetMipToLoad(width, height, maxWidth > 0 ? maxWidth : width, maxHeight > 0 ? maxHeight : height, mipmapCount);
+                if (maxWidth > 0 || maxHeight > 0)
+                {
+                    mipNum = GetMipToLoad(width, height, maxWidth > 0 ? maxWidth : width, maxHeight > 0 ? maxHeight : height, mipmapCount);
+                }
 
                 for (var frame = 0; frame < numFrames; frame++)
                 {
@@ -140,7 +143,7 @@ namespace Sledge.Providers.Texture.Vtf
                     {
                         for (var slice = 0; slice < depth; slice++)
                         {
-                            for (var mip = mipNum; mip < mipmapCount; mip++)
+                            for (int mip = mipNum; mip < mipmapCount; mip++)
                             {
                                 var wid = MipmapResize(width, mip);
                                 var hei = MipmapResize(height, mip);
@@ -154,7 +157,6 @@ namespace Sledge.Providers.Texture.Vtf
                         }
                     }
                 }
-
 
                 return null;
             }
@@ -303,19 +305,19 @@ namespace Sledge.Providers.Texture.Vtf
                     break;
                 case VtfImageFormat.Rgb565:
                     throw new NotImplementedException();
-                    break;
+                    //break;
                 case VtfImageFormat.I8:
                     throw new NotImplementedException();
-                    break;
+                    //break;
                 case VtfImageFormat.Ia88:
                     throw new NotImplementedException();
-                    break;
+                    //break;
                 case VtfImageFormat.P8:
                     throw new NotImplementedException();
-                    break;
+                    //break;
                 case VtfImageFormat.A8:
                     throw new NotImplementedException();
-                    break;
+                    //break;
                 case VtfImageFormat.Rgb888Bluescreen:
                     TransformBytes(buffer, br, width, height, 3, -1, 0, 1, 2, true);
                     break;
@@ -334,7 +336,7 @@ namespace Sledge.Providers.Texture.Vtf
                     break;
                 case VtfImageFormat.Dxt3:
                     throw new NotImplementedException();
-                    break;
+                    //break;
                 case VtfImageFormat.Dxt5:
                     DecompressDxt5(buffer, br, width, height);
                     break;
@@ -343,22 +345,22 @@ namespace Sledge.Providers.Texture.Vtf
                     break;
                 case VtfImageFormat.Bgr565:
                     throw new NotImplementedException();
-                    break;
+                    //break;
                 case VtfImageFormat.Bgrx5551:
                     throw new NotImplementedException();
-                    break;
+                    //break;
                 case VtfImageFormat.Bgra4444:
                     throw new NotImplementedException();
-                    break;
+                    //break;
                 case VtfImageFormat.Bgra5551:
                     throw new NotImplementedException();
-                    break;
+                    //break;
                 case VtfImageFormat.Uv88:
                     TransformBytes(buffer, br, width, height, 2, -1, 0, 1, -1, false);
                     break;
                 case VtfImageFormat.Uvwq8888:
                     throw new NotImplementedException();
-                    break;
+                    //break;
                 case VtfImageFormat.Rgba16161616F:
                     TransformRgba16161616F(buffer, br, width, height);
                     break;
@@ -367,43 +369,43 @@ namespace Sledge.Providers.Texture.Vtf
                     break;
                 case VtfImageFormat.Uvlx8888:
                     throw new NotImplementedException();
-                    break;
+                    //break;
                 case VtfImageFormat.R32F:
                     throw new NotImplementedException();
-                    break;
+                    //break;
                 case VtfImageFormat.Rgb323232F:
                     throw new NotImplementedException();
-                    break;
+                    //break;
                 case VtfImageFormat.Rgba32323232F:
                     throw new NotImplementedException();
-                    break;
+                    //break;
                 case VtfImageFormat.NvDst16:
                     throw new NotImplementedException();
-                    break;
+                    //break;
                 case VtfImageFormat.NvDst24:
                     throw new NotImplementedException();
-                    break;
+                    //break;
                 case VtfImageFormat.NvIntz:
                     throw new NotImplementedException();
-                    break;
+                    //break;
                 case VtfImageFormat.NvRawz:
                     throw new NotImplementedException();
-                    break;
+                    //break;
                 case VtfImageFormat.AtiDst16:
                     throw new NotImplementedException();
-                    break;
+                    //break;
                 case VtfImageFormat.AtiDst24:
                     throw new NotImplementedException();
-                    break;
+                    //break;
                 case VtfImageFormat.NvNull:
                     throw new NotImplementedException();
-                    break;
+                    //break;
                 case VtfImageFormat.Ati2N:
                     throw new NotImplementedException();
-                    break;
+                    //break;
                 case VtfImageFormat.Ati1N:
                     throw new NotImplementedException();
-                    break;
+                    //break;
             }
             var bmp = new Bitmap((int)width, (int)height, PixelFormat.Format32bppArgb);
             var bits = bmp.LockBits(new Rectangle(0, 0, (int)width, (int)height), ImageLockMode.WriteOnly, PixelFormat.Format32bppArgb);

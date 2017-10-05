@@ -1,25 +1,21 @@
+using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Imaging;
+using System.Windows.Forms;
 using OpenTK.Graphics.OpenGL;
-using Sledge.Editor.Rendering;
-using Sledge.Rendering;
+using Sledge.UI;
 using PixelFormat = OpenTK.Graphics.OpenGL.PixelFormat;
 
 namespace Sledge.Editor.UI
 {
     public class ScreenshotViewportListener : IViewportEventListener
     {
-        public MapViewport Viewport { get; set; }
+        public ViewportBase Viewport { get; set; }
         public Image Screenshot { get; private set; }
 
-        public ScreenshotViewportListener(MapViewport viewport)
+        public ScreenshotViewportListener(ViewportBase viewport)
         {
             Viewport = viewport;
-        }
-
-        public bool IsActive()
-        {
-            return true;
         }
 
         public void KeyUp(ViewportEvent e)
@@ -67,21 +63,6 @@ namespace Sledge.Editor.UI
             
         }
 
-        public void DragStart(ViewportEvent e)
-        {
-            
-        }
-
-        public void DragMove(ViewportEvent e)
-        {
-
-        }
-
-        public void DragEnd(ViewportEvent e)
-        {
-
-        }
-
         public void MouseEnter(ViewportEvent e)
         {
             
@@ -92,17 +73,7 @@ namespace Sledge.Editor.UI
             
         }
 
-        public void ZoomChanged(ViewportEvent e)
-        {
-
-        }
-
-        public void PositionChanged(ViewportEvent e)
-        {
-
-        }
-
-        public void UpdateFrame(Frame frame)
+        public void UpdateFrame(FrameInfo frame)
         {
             
         }
@@ -124,9 +95,9 @@ namespace Sledge.Editor.UI
 
         public void PostRender()
         {
-            var bmp = new Bitmap(Viewport.Control.ClientSize.Width, Viewport.Control.ClientSize.Height);
-            var data = bmp.LockBits(Viewport.Control.ClientRectangle, ImageLockMode.WriteOnly, System.Drawing.Imaging.PixelFormat.Format24bppRgb);
-            GL.ReadPixels(0, 0, Viewport.Control.ClientSize.Width, Viewport.Control.ClientSize.Height, PixelFormat.Bgr, PixelType.UnsignedByte, data.Scan0);
+            var bmp = new Bitmap(Viewport.ClientSize.Width, Viewport.ClientSize.Height);
+            var data = bmp.LockBits(Viewport.ClientRectangle, ImageLockMode.WriteOnly, System.Drawing.Imaging.PixelFormat.Format24bppRgb);
+            GL.ReadPixels(0, 0, Viewport.ClientSize.Width, Viewport.ClientSize.Height, PixelFormat.Bgr, PixelType.UnsignedByte, data.Scan0);
             bmp.UnlockBits(data);
             bmp.RotateFlip(RotateFlipType.RotateNoneFlipY);
             Screenshot = bmp;

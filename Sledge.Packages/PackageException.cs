@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.Serialization;
 using System.Text;
 
 namespace Sledge.Packages
@@ -16,6 +17,10 @@ namespace Sledge.Packages
         }
 
         public PackageException(string message) : base(message)
+        {
+        }
+
+        protected PackageException(SerializationInfo info, StreamingContext context) : base(info, context)
         {
         }
     }

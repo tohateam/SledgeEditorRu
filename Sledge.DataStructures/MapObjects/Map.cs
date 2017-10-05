@@ -141,10 +141,11 @@ namespace Sledge.DataStructures.MapObjects
         /// <summary>
         /// Should be called when a map is loaded. Sets up visgroups, object ids, gamedata, and textures.
         /// </summary>
-        public void PostLoadProcess(GameData.GameData gameData, Func<string, float> textureOpacity)
+        public void PostLoadProcess(GameData.GameData gameData, Func<string, ITexture> textureAccessor, Func<string, float> textureOpacity)
         {
+            PartialPostLoadProcess(gameData, textureAccessor, textureOpacity);
+
             var all = WorldSpawn.FindAll();
-            PartialPostLoadProcess(all, gameData, textureOpacity);
 
             // Set maximum ids
             var maxObjectId = all.Max(x => x.ID);
@@ -210,8 +211,9 @@ namespace Sledge.DataStructures.MapObjects
             return g.SelectMany(x => GetAllVisgroups(x.Children)).Union(g);
         }
 
-        public void PartialPostLoadProcess(IList<MapObject> objects, GameData.GameData gameData, Func<string, float> textureOpacity)
+        public void PartialPostLoadProcess(GameData.GameData gameData, Func<string, ITexture> textureAccessor, Func<string, float> textureOpacity)
         {
+            var objects = WorldSpawn.FindAll();
             Parallel.ForEach(objects, obj =>
             {
                 if (obj is Entity)
@@ -219,7 +221,9 @@ namespace Sledge.DataStructures.MapObjects
                     var ent = (Entity) obj;
                     if (ent.GameData == null || !String.Equals(ent.GameData.Name, ent.EntityData.Name, StringComparison.InvariantCultureIgnoreCase))
                     {
-                        var gd = gameData.Classes.FirstOrDefault(x => String.Equals(x.Name, ent.EntityData.Name, StringComparison.CurrentCultureIgnoreCase) && x.ClassType != ClassType.Base);
+                        var gd =
+                            gameData.Classes.FirstOrDefault(
+                                x => String.Equals(x.Name, ent.EntityData.Name, StringComparison.CurrentCultureIgnoreCase) && x.ClassType != ClassType.Base);
                         ent.GameData = gd;
                         ent.UpdateBoundingBox();
                     }
@@ -230,11 +234,16 @@ namespace Sledge.DataStructures.MapObjects
                     var disp = HideDisplacementSolids && s.Faces.Any(x => x is Displacement);
                     s.Faces.ForEach(f =>
                     {
+                        if (f.Texture.Texture == null)
+                        {
+                            f.Texture.Texture = textureAccessor(f.Texture.Name.ToLowerInvariant());
+                            f.CalculateTextureCoordinates(true);
+                        }
                         if (disp && !(f is Displacement))
                         {
                             f.Opacity = 0;
                         }
-                        else
+                        else if (f.Texture.Texture != null)
                         {
                             f.Opacity = textureOpacity(f.Texture.Name.ToLowerInvariant());
                             if (!HideNullTextures && f.Opacity < 0.1) f.Opacity = 1;

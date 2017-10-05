@@ -1,4 +1,8 @@
-﻿using Sledge.DataStructures.MapObjects;
+﻿using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Sledge.DataStructures.MapObjects;
+using Sledge.Editor.Documents;
 
 namespace Sledge.Editor.Actions.MapObjects.Operations.EditOperations
 {

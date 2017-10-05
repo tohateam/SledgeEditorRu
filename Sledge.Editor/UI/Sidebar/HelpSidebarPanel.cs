@@ -1,7 +1,11 @@
-﻿using System.Text;
+﻿using System;
+using System.Linq;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Windows.Forms;
 using Sledge.Common.Mediator;
+using Sledge.DataStructures.GameData;
+using Sledge.Editor.Documents;
 using Sledge.Editor.Tools;
 
 namespace Sledge.Editor.UI.Sidebar

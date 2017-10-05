@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Runtime.Serialization;
-using Sledge.Common;
+using Sledge.Extensions;
 
 namespace Sledge.DataStructures.Geometric
 {

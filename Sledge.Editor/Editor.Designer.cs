@@ -78,7 +78,7 @@ namespace Sledge.Editor
             this.StatusBoxLabel,
             this.StatusZoomLabel,
             this.StatusSnapLabel});
-            this.stsStatus.Location = new System.Drawing.Point(0, 726);
+            this.stsStatus.Location = new System.Drawing.Point(0, 717);
             this.stsStatus.Name = "stsStatus";
             this.stsStatus.Size = new System.Drawing.Size(879, 24);
             this.stsStatus.TabIndex = 1;
@@ -87,7 +87,7 @@ namespace Sledge.Editor
             // StatusTextLabel
             // 
             this.StatusTextLabel.Name = "StatusTextLabel";
-            this.StatusTextLabel.Size = new System.Drawing.Size(283, 19);
+            this.StatusTextLabel.Size = new System.Drawing.Size(314, 19);
             this.StatusTextLabel.Spring = true;
             this.StatusTextLabel.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             // 
@@ -146,7 +146,7 @@ namespace Sledge.Editor
             this.tscToolStrip.ContentPanel.Controls.Add(this.DockLeft);
             this.tscToolStrip.ContentPanel.Controls.Add(this.DockBottom);
             this.tscToolStrip.ContentPanel.Controls.Add(this.DockRight);
-            this.tscToolStrip.ContentPanel.Size = new System.Drawing.Size(845, 677);
+            this.tscToolStrip.ContentPanel.Size = new System.Drawing.Size(845, 668);
             this.tscToolStrip.Dock = System.Windows.Forms.DockStyle.Fill;
             // 
             // tscToolStrip.LeftToolStripPanel
@@ -154,7 +154,7 @@ namespace Sledge.Editor
             this.tscToolStrip.LeftToolStripPanel.Controls.Add(this.tspTools);
             this.tscToolStrip.Location = new System.Drawing.Point(0, 24);
             this.tscToolStrip.Name = "tscToolStrip";
-            this.tscToolStrip.Size = new System.Drawing.Size(879, 702);
+            this.tscToolStrip.Size = new System.Drawing.Size(879, 693);
             this.tscToolStrip.TabIndex = 2;
             this.tscToolStrip.Text = "tscToolStrip";
             // 
@@ -167,7 +167,7 @@ namespace Sledge.Editor
             this.DockFill.Hidden = false;
             this.DockFill.Location = new System.Drawing.Point(26, 0);
             this.DockFill.Name = "DockFill";
-            this.DockFill.Size = new System.Drawing.Size(567, 528);
+            this.DockFill.Size = new System.Drawing.Size(567, 519);
             this.DockFill.TabIndex = 4;
             // 
             // TableSplitView
@@ -342,9 +342,7 @@ namespace Sledge.Editor
             this.TableSplitView.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 50F));
             this.TableSplitView.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 50F));
             this.TableSplitView.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 50F));
-            this.TableSplitView.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 50F));
-            this.TableSplitView.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 50F));
-            this.TableSplitView.Size = new System.Drawing.Size(567, 504);
+            this.TableSplitView.Size = new System.Drawing.Size(567, 495);
             this.TableSplitView.TabIndex = 0;
             // 
             // DocumentTabs
@@ -362,9 +360,9 @@ namespace Sledge.Editor
             // tabPage1
             // 
             this.tabPage1.ImageIndex = 0;
-            this.tabPage1.Location = new System.Drawing.Point(4, 28);
+            this.tabPage1.Location = new System.Drawing.Point(4, 25);
             this.tabPage1.Name = "tabPage1";
-            this.tabPage1.Size = new System.Drawing.Size(559, -8);
+            this.tabPage1.Size = new System.Drawing.Size(559, -5);
             this.tabPage1.TabIndex = 0;
             this.tabPage1.Text = "Tab";
             this.tabPage1.UseVisualStyleBackColor = true;
@@ -378,7 +376,7 @@ namespace Sledge.Editor
             this.RightSidebar.MinSize = 230;
             this.RightSidebar.Name = "RightSidebar";
             this.RightSidebar.Padding = new System.Windows.Forms.Padding(8, 0, 0, 0);
-            this.RightSidebar.Size = new System.Drawing.Size(230, 528);
+            this.RightSidebar.Size = new System.Drawing.Size(230, 519);
             this.RightSidebar.TabIndex = 3;
             // 
             // DockLeft
@@ -389,7 +387,7 @@ namespace Sledge.Editor
             this.DockLeft.Location = new System.Drawing.Point(0, 0);
             this.DockLeft.Name = "DockLeft";
             this.DockLeft.Padding = new System.Windows.Forms.Padding(0, 0, 8, 0);
-            this.DockLeft.Size = new System.Drawing.Size(26, 528);
+            this.DockLeft.Size = new System.Drawing.Size(26, 519);
             this.DockLeft.TabIndex = 3;
             // 
             // DockBottom
@@ -398,7 +396,7 @@ namespace Sledge.Editor
             this.DockBottom.Dock = System.Windows.Forms.DockStyle.Bottom;
             this.DockBottom.DockDimension = 149;
             this.DockBottom.Hidden = false;
-            this.DockBottom.Location = new System.Drawing.Point(0, 528);
+            this.DockBottom.Location = new System.Drawing.Point(0, 519);
             this.DockBottom.Name = "DockBottom";
             this.DockBottom.Padding = new System.Windows.Forms.Padding(0, 8, 0, 0);
             this.DockBottom.Size = new System.Drawing.Size(823, 149);
@@ -420,7 +418,7 @@ namespace Sledge.Editor
             this.DockRight.Location = new System.Drawing.Point(823, 0);
             this.DockRight.Name = "DockRight";
             this.DockRight.Padding = new System.Windows.Forms.Padding(8, 0, 0, 0);
-            this.DockRight.Size = new System.Drawing.Size(22, 677);
+            this.DockRight.Size = new System.Drawing.Size(22, 668);
             this.DockRight.TabIndex = 1;
             // 
             // tspTools
@@ -438,7 +436,7 @@ namespace Sledge.Editor
             this.AllowDrop = true;
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(879, 750);
+            this.ClientSize = new System.Drawing.Size(879, 741);
             this.Controls.Add(this.tscToolStrip);
             this.Controls.Add(this.stsStatus);
             this.Controls.Add(this.mnuMain);

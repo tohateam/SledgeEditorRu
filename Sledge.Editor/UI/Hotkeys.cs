@@ -1,5 +1,8 @@
-﻿using System.Windows.Forms;
+﻿using System;
+using System.Reflection;
+using System.Windows.Forms;
 using Sledge.Common.Mediator;
+using Sledge.UI;
 
 namespace Sledge.Editor.UI
 {

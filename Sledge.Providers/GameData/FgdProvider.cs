@@ -22,11 +22,6 @@ namespace Sledge.Providers.GameData
             return true;
         }
 
-        public DataStructures.GameData.GameData OpenFile(string filename)
-        {
-            return GetFromFile(filename);
-        }
-
         protected override DataStructures.GameData.GameData GetFromFile(string filename)
         {
             if (!File.Exists(filename)) throw new ProviderException("File does not exist: " + filename);
@@ -39,7 +34,7 @@ namespace Sledge.Providers.GameData
         protected override DataStructures.GameData.GameData GetFromStream(Stream stream)
         {
             var lex = Lex(new StreamReader(stream));
-            return Parse(lex.Where(l => l.Type != LexType.Comment).ToList());
+            return Parse(lex.Where(l => l.Type != LexType.Comment));
         }
 
         private DataStructures.GameData.GameData Parse(IEnumerable<LexObject> lex)
@@ -191,7 +186,7 @@ namespace Sledge.Providers.GameData
                     }
                     iterator.MoveNext();
                 }
-                // = class_name : "Descr" + "iption" : "Additional information" [
+                // = class_name : "Descr" + "iption" [
                 Assert(iterator.Current, iterator.Current.Type == LexType.Equals, "Expected equals, got " + iterator.Current.Type);
                 Expect(iterator, LexType.Value);
                 gdo.Name = iterator.Current.Value;
@@ -202,12 +197,6 @@ namespace Sledge.Providers.GameData
                     // : {"Descr" + "iption"} [
                     iterator.MoveNext();
                     gdo.Description = ParsePlusString(iterator);
-                }
-                if (iterator.Current.Type == LexType.Colon)
-                {
-                    // Check for additional information
-                    iterator.MoveNext();
-                    gdo.AdditionalInformation = ParsePlusString(iterator);
                 }
                 Assert(iterator.Current, iterator.Current.Type == LexType.OpenBracket, "Unexpected " + iterator.Current.Type);
 
@@ -300,8 +289,6 @@ namespace Sledge.Providers.GameData
                             // Parsing property options:
                             // value : description
                             // value : description : 0
-                            // value : description : 0 : "long description"
-                            // value : description : "long description"
                             iterator.MoveNext();
                             while (iterator.Current.IsValueOrString())
                             {
@@ -321,36 +308,17 @@ namespace Sledge.Providers.GameData
                                 else
                                 {
                                     opt.Description = iterator.Current.GetValue();
-                                    iterator.MoveNext(); // ParsePlusString moves next once it's complete, need to do the same here
+                                    iterator.MoveNext();
+                                        // ParsePlusString moves next once it's complete, need to do the same here
                                 }
 
                                 prop.Options.Add(opt);
-
                                 if (iterator.Current.Type != LexType.Colon)
                                 {
                                     continue;
                                 }
-
-                                // There's a default value, a long description, or both
-                                iterator.MoveNext();
-                                if (iterator.Current.Type == LexType.Value)
-                                {
-                                    // If we have a value, it's the flag default
-                                    opt.On = iterator.Current.Value == "1";
-                                    iterator.MoveNext();
-
-                                    // If we find another colon, there's a long description present as well
-                                    // Otherwise we're finished here
-                                    if (iterator.Current.Type == LexType.Colon) iterator.MoveNext();
-                                    else continue;
-                                }
-                                // Assert without moving next
-                                if (iterator.Current.Type != LexType.String)
-                                {
-                                    throw new ProviderException("Unable to parse FGD. Expected " + LexType.String + ", got " + iterator.Current.Type + ".\n" +
-                                                                "On line " + iterator.Current.LineNumber + ", character " + iterator.Current.CharacterNumber);
-                                }
-                                opt.LongDescription = iterator.Current.GetValue();
+                                Expect(iterator, LexType.Value);
+                                opt.On = iterator.Current.Value == "1";
                                 iterator.MoveNext();
                             }
                             Assert(iterator.Current, iterator.Current.Type == LexType.CloseBracket, "Unexpected " + iterator.Current.Type);

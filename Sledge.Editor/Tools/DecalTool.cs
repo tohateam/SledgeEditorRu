@@ -6,9 +6,9 @@ using Sledge.DataStructures.MapObjects;
 using Sledge.Editor.Actions.MapObjects.Operations;
 using Sledge.Editor.Extensions;
 using Sledge.Editor.Properties;
-using Sledge.Editor.Rendering;
-using Sledge.Rendering.Cameras;
+using Sledge.Graphics.Helpers;
 using Sledge.Settings;
+using Sledge.UI;
 
 namespace Sledge.Editor.Tools
 {
@@ -58,9 +58,9 @@ namespace Sledge.Editor.Tools
                 .FirstOrDefault();
         }
 
-        protected override void MouseDown(MapViewport viewport, PerspectiveCamera camera, ViewportEvent e)
+        public override void MouseDown(ViewportBase viewport, ViewportEvent e)
         {
-            var vp = viewport;
+            var vp = viewport as Viewport3D;
             if (vp == null) return;
 
             // Get the ray that is cast from the clicked point along the viewport frustrum
@@ -91,9 +91,9 @@ namespace Sledge.Editor.Tools
                 return;
             }
             var selected = Document.TextureCollection.SelectedTexture;
-            var textureName = selected == null ? "{TARGET" : selected;
+            var textureName = selected == null ? "{TARGET" : selected.Name;
 
-            if (!Document.TextureCollection.HasTexture(textureName))
+            if (Document.TextureCollection.GetItem(textureName) == null)
             {
                 return;
             }
@@ -105,9 +105,70 @@ namespace Sledge.Editor.Tools
                 Colour = Colour.GetRandomBrushColour(),
                 Origin = origin
             };
+            decal.SetDecal(TextureHelper.Get(textureName.ToLowerInvariant()));
             decal.EntityData.SetPropertyValue("texture", textureName);
 
             Document.PerformAction("Apply decal", new Create(Document.Map.WorldSpawn.ID, decal));
+        }
+
+        public override void MouseEnter(ViewportBase viewport, ViewportEvent e)
+        {
+            // 
+        }
+
+        public override void MouseLeave(ViewportBase viewport, ViewportEvent e)
+        {
+            // 
+        }
+
+        public override void MouseClick(ViewportBase viewport, ViewportEvent e)
+        {
+            // Not used
+        }
+
+        public override void MouseDoubleClick(ViewportBase viewport, ViewportEvent e)
+        {
+            // Not used
+        }
+
+        public override void MouseUp(ViewportBase viewport, ViewportEvent e)
+        {
+            // 
+        }
+
+        public override void MouseWheel(ViewportBase viewport, ViewportEvent e)
+        {
+            // 
+        }
+
+        public override void MouseMove(ViewportBase viewport, ViewportEvent e)
+        {
+            // 
+        }
+
+        public override void KeyPress(ViewportBase viewport, ViewportEvent e)
+        {
+            // 
+        }
+
+        public override void KeyDown(ViewportBase viewport, ViewportEvent e)
+        {
+            // 
+        }
+
+        public override void KeyUp(ViewportBase viewport, ViewportEvent e)
+        {
+            // 
+        }
+
+        public override void UpdateFrame(ViewportBase viewport, FrameInfo frame)
+        {
+            // 
+        }
+
+        public override void Render(ViewportBase viewport)
+        {
+            // 
         }
 
         public override HotkeyInterceptResult InterceptHotkey(HotkeysMediator hotkeyMessage, object parameters)

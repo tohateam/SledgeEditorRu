@@ -13,7 +13,9 @@ namespace Sledge.Settings.Models
         public string Name { get; set; }
         public Engine Engine { get; set; }
         public int BuildID { get; set; }
-        public string GameInstallDir { get; set; }
+        public bool SteamInstall { get; set; }
+        public string WonGameDir { get; set; }
+        public string SteamGameDir { get; set; }
         public string BaseDir { get; set; }
         public string ModDir { get; set; }
         public bool UseHDModels { get; set; }
@@ -58,13 +60,9 @@ namespace Sledge.Settings.Models
             Name = gs["Name"];
             Engine = (Engine) Enum.Parse(typeof(Engine), gs["EngineID"]);
             BuildID = gs.PropertyInteger("BuildID");
-            GameInstallDir = gs["WonGameDir"] ?? gs["GameInstallDir"];
-            var steamGameDir = gs["SteamGameDir"];
-            var steamInstall = gs.PropertyBoolean("SteamInstall");
-            if (steamInstall && steamGameDir != null)
-            {
-                GameInstallDir = Path.Combine(Steam.SteamDirectory, "steamapps", "common", steamGameDir);
-            }
+            SteamInstall = gs.PropertyBoolean("SteamInstall");
+            WonGameDir = gs["WonGameDir"];
+            SteamGameDir = gs["SteamGameDir"];
             ModDir = gs["ModDir"];
             UseHDModels = gs.PropertyBoolean("UseHDModels", true);
             BaseDir = gs["BaseDir"];
@@ -115,7 +113,9 @@ namespace Sledge.Settings.Models
             gs["Name"] = Name;
             gs["EngineID"] = Engine.ToString();
             gs["BuildID"] = BuildID.ToString(CultureInfo.InvariantCulture);
-            gs["GameInstallDir"] = GameInstallDir;
+            gs["SteamInstall"] = SteamInstall.ToString(CultureInfo.InvariantCulture);
+            gs["WonGameDir"] = WonGameDir;
+            gs["SteamGameDir"] = SteamGameDir;
             gs["ModDir"] = ModDir;
             gs["UseHDModels"] = UseHDModels.ToString(CultureInfo.InvariantCulture);
             gs["BaseDir"] = BaseDir;
@@ -167,12 +167,16 @@ namespace Sledge.Settings.Models
 
         public string GetModDirectory()
         {
-            return Path.Combine(GameInstallDir, ModDir);
+            return SteamInstall
+                ? Path.Combine(Steam.SteamDirectory, "steamapps", "common", SteamGameDir, ModDir)
+                : Path.Combine(WonGameDir, ModDir);
         }
 
         public string GetBaseDirectory()
         {
-            return Path.Combine(GameInstallDir, BaseDir);
+            return SteamInstall
+                ? Path.Combine(Steam.SteamDirectory, "steamapps", "common", SteamGameDir, BaseDir)
+                : Path.Combine(WonGameDir, BaseDir);
         }
 
         public IEnumerable<string> GetFgdDirectories()
@@ -182,14 +186,24 @@ namespace Sledge.Settings.Models
 
         public string GetExecutable()
         {
-            return Path.Combine(GameInstallDir, Executable);
+            return SteamInstall
+                ? Path.Combine(Steam.SteamDirectory, "steam.exe")
+                : Path.Combine(WonGameDir, Executable);
         }
 
         public string GetGameLaunchArgument()
         {
-            var mod = (ModDir ?? "").ToLowerInvariant();
-            if (mod != "valve") return "-game " + mod;
-            return "";
+            if (SteamInstall)
+            {
+                var id = GetSteamAppId();
+                return "-applaunch " + id;
+            }
+            else
+            {
+                var mod = (ModDir ?? "").ToLowerInvariant();
+                if (mod != "valve") return "-game " + mod;
+                return "";
+            }
         }
 
         public IEnumerable<string> GetTextureBlacklist()

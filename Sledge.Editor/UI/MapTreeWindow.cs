@@ -1,8 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Drawing;
 using System.Linq;
+using System.Text;
 using System.Windows.Forms;
 using Sledge.Common.Mediator;
+using Sledge.DataStructures.GameData;
 using Sledge.DataStructures.MapObjects;
 using Sledge.Editor.Actions.MapObjects.Selection;
 using Sledge.Editor.Documents;
@@ -144,6 +149,8 @@ namespace Sledge.Editor.UI
                 {
                     var cnode = vnode.Nodes.Add("Vertex " + d + ": " + vertex.Location);
                     d++;
+                    cnode.Nodes.Add("Texture U: " + vertex.TextureU);
+                    cnode.Nodes.Add("Texture V: " + vertex.TextureV);
                 }
                 yield return fnode;
             }

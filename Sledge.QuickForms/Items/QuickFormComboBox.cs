@@ -12,10 +12,9 @@ namespace Sledge.QuickForms.Items
     {
         private readonly IEnumerable<object> _items; 
 
-        public QuickFormComboBox(string key, string label, IEnumerable<object> items)
+        public QuickFormComboBox(string name, IEnumerable<object> items)
         {
-            Name = key;
-            Label = label;
+            Name = name;
             _items = items;
         }
 
@@ -23,7 +22,7 @@ namespace Sledge.QuickForms.Items
         {
             var controls = new List<Control>();
 
-            var l = new Label { Text = Label };
+            var l = new Label { Text = Name };
             Location(l, qf, true);
             Size(l, qf.LabelWidth);
             TextAlign(l);

@@ -4,7 +4,6 @@ using Sledge.Common;
 using Sledge.DataStructures.Geometric;
 using Sledge.DataStructures.MapObjects;
 using Sledge.Editor.Brushes.Controls;
-using Sledge.Providers.Texture;
 
 namespace Sledge.Editor.Brushes
 {
@@ -22,7 +21,7 @@ namespace Sledge.Editor.Brushes
             return new List<BrushControl>();
         }
 
-        public IEnumerable<MapObject> Create(IDGenerator generator, Box box, string texture, int roundDecimals)
+        public IEnumerable<MapObject> Create(IDGenerator generator, Box box, ITexture texture, int roundDecimals)
         {
             var solid = new Solid(generator.GetNextObjectID()) { Colour = Colour.GetRandomBrushColour() };
             // The lower Z plane will be base
@@ -42,12 +41,12 @@ namespace Sledge.Editor.Brushes
             foreach (var arr in faces)
             {
                 var face = new Face(generator.GetNextFaceID())
-                {
-                    Parent = solid,
-                    Plane = new Plane(arr[0], arr[1], arr[2]),
-                    Colour = solid.Colour,
-                    Texture = {Name = texture }
-                };
+                               {
+                                   Parent = solid,
+                                   Plane = new Plane(arr[0], arr[1], arr[2]),
+                                   Colour = solid.Colour,
+                                   Texture = { Texture = texture }
+                               };
                 face.Vertices.AddRange(arr.Select(x => new Vertex(x, face)));
                 face.UpdateBoundingBox();
                 face.AlignTextureToFace();

@@ -17,8 +17,8 @@ namespace Sledge.DataStructures.MapObjects
         public string ClassName { get; set; }
         public List<int> Visgroups { get; set; }
         public List<int> AutoVisgroups { get; set; }
-        protected HierarchyInfo Hierarchy { get; }
-        public MapObject Parent => Hierarchy.Parent;
+        protected Dictionary<long, MapObject> Children { get; set; }
+        public MapObject Parent { get; private set; }
         public virtual Color Colour { get; set; }
         public bool IsSelected { get; set; }
         public bool IsCodeHidden { get; set; }
@@ -33,7 +33,7 @@ namespace Sledge.DataStructures.MapObjects
             ID = id;
             Visgroups = new List<int>();
             AutoVisgroups = new List<int>();
-            Hierarchy = new HierarchyInfo(this);
+            Children = new Dictionary<long, MapObject>();
             MetaData = new MetaData();
         }
 
@@ -52,24 +52,6 @@ namespace Sledge.DataStructures.MapObjects
             }
         }
 
-        protected bool Equals(MapObject other)
-        {
-            return ID == other.ID;
-        }
-
-        public override bool Equals(object obj)
-        {
-            if (ReferenceEquals(null, obj)) return false;
-            if (ReferenceEquals(this, obj)) return true;
-            if (obj.GetType() != this.GetType()) return false;
-            return Equals((MapObject) obj);
-        }
-
-        public override int GetHashCode()
-        {
-            return ID.GetHashCode();
-        }
-
         public virtual void GetObjectData(SerializationInfo info, StreamingContext context)
         {
             info.AddValue("ID", ID);
@@ -82,20 +64,18 @@ namespace Sledge.DataStructures.MapObjects
 
         public IEnumerable<MapObject> GetChildren()
         {
-            return Hierarchy.GetChildren();
+            return Children.Values.ToList();
         }
 
-        /// <summary>
-        /// The number of direct children this map object has
-        /// </summary>
-        public int ChildCount => Hierarchy.NumChildren;
+        public int ChildCount
+        {
+            get { return Children.Count; }
+        }
 
-        /// <summary>
-        /// The number of descendants this map object has
-        /// </summary>
-        public int DescendantCount => Hierarchy.NumDescendants;
-
-        public bool HasChildren => ChildCount > 0;
+        public bool HasChildren
+        {
+            get { return Children.Count > 0; }
+        }
 
         /// <summary>
         /// Creates an exact copy of this object with a new ID.
@@ -122,7 +102,7 @@ namespace Sledge.DataStructures.MapObjects
             if (performClone && o.ID != ID)
             {
                 var parent = o.Parent;
-                var setPar = o.Parent != null && o.Parent.Hierarchy.HasChild(o.ID) && o.Parent.Hierarchy.GetChild(o.ID) == o;
+                var setPar = o.Parent != null && o.Parent.Children.ContainsKey(o.ID) && o.Parent.Children[o.ID] == o;
                 if (setPar) o.SetParent(null);
                 o.ID = ID;
                 if (setPar) o.SetParent(parent);
@@ -130,7 +110,7 @@ namespace Sledge.DataStructures.MapObjects
             o.ClassName = ClassName;
             o.Visgroups.AddRange(Visgroups);
             o.AutoVisgroups.AddRange(AutoVisgroups);
-            o.Hierarchy.Parent = Parent;
+            o.Parent = Parent;
             o.Colour = Colour;
             o.IsSelected = IsSelected;
             o.IsCodeHidden = IsCodeHidden;
@@ -150,12 +130,12 @@ namespace Sledge.DataStructures.MapObjects
         {
             Visgroups.Clear();
             AutoVisgroups.Clear();
-            Hierarchy.ClearChildren();
+            Children.Clear();
 
             if (performUnclone && o.ID != ID)
             {
                 var parent = Parent;
-                var setPar = Parent != null && Parent.Hierarchy.HasChild(ID) && Parent.Hierarchy.GetChild(ID) == this;
+                var setPar = Parent != null && Parent.Children.ContainsKey(ID) && Parent.Children[ID] == this;
                 if (setPar) SetParent(null);
                 ID = o.ID;
                 if (setPar) SetParent(parent);
@@ -163,7 +143,7 @@ namespace Sledge.DataStructures.MapObjects
             ClassName = o.ClassName;
             Visgroups.AddRange(o.Visgroups);
             AutoVisgroups.AddRange(o.AutoVisgroups);
-            Hierarchy.Parent = o.Parent;
+            Parent = o.Parent;
             Colour = o.Colour;
             IsSelected = o.IsSelected;
             IsCodeHidden = o.IsCodeHidden;
@@ -182,7 +162,28 @@ namespace Sledge.DataStructures.MapObjects
 
         public void SetParent(MapObject parent, bool updateBoundingBox = true)
         {
-            Hierarchy.SetParent(parent, updateBoundingBox);
+            if (Parent != null)
+            {
+                if (Parent.Children.ContainsKey(ID) && Parent.Children[ID] == this) Parent.Children.Remove(ID);
+                if (updateBoundingBox) Parent.UpdateBoundingBox();
+            }
+            Parent = parent;
+            if (Parent != null)
+            {
+                Parent.Children[ID] = this;
+                if (updateBoundingBox) UpdateBoundingBox();
+            }
+        }
+
+        public bool RemoveDescendant(MapObject remove)
+        {
+            if (remove == null) return false;
+            if (Children.Remove(remove.ID)) return true;
+            foreach (var child in GetChildren())
+            {
+                if (child.RemoveDescendant(remove)) return true;
+            }
+            return false;
         }
 
         public virtual void UpdateBoundingBox(bool cascadeToParent = true)
@@ -281,7 +282,7 @@ namespace Sledge.DataStructures.MapObjects
             if (!(this is World))
             {
                 if (BoundingBox == null || !box.CoordinateIsInside(BoundingBox.Center)) return list;
-                if ((this is Solid || this is Entity) && !HasChildren) list.Add(this);
+                if ((this is Solid || this is Entity) && !Children.Any()) list.Add(this);
             }
             list.AddRange(GetChildren().SelectMany(x => x.GetAllNodesWithCentersContainedWithin(box, allowCodeHidden, allowVisgroupHidden)));
             return list;
@@ -349,12 +350,12 @@ namespace Sledge.DataStructures.MapObjects
                     list.Add(this);
                 }
                 // Point entities: Match bounding box edges against box
-                else if (!forceOrigin && this is Entity && !HasChildren && BoundingBox.GetBoxLines().Any(box.IntersectsWith))
+                else if (!forceOrigin && this is Entity && !Children.Any() && BoundingBox.GetBoxLines().Any(box.IntersectsWith))
                 {
                     list.Add(this);
                 }
                 // Origins: Match bounding box center against box (for solids and point entities)
-                else if ((includeOrigin || forceOrigin) && !HasChildren && (this is Solid || this is Entity) && box.CoordinateIsInside(BoundingBox.Center))
+                else if ((includeOrigin || forceOrigin) && !Children.Any() && (this is Solid || this is Entity) && box.CoordinateIsInside(BoundingBox.Center))
                 {
                     list.Add(this);
                 }
@@ -440,7 +441,13 @@ namespace Sledge.DataStructures.MapObjects
         public MapObject FindByID(long id)
         {
             if (ID == id) return this;
-            return Hierarchy.GetDescendant(id);
+            if (Children.ContainsKey(id)) return Children[id];
+            foreach (var mo in GetChildren())
+            {
+                var by = mo.FindByID(id);
+                if (by != null) return by;
+            }
+            return null;
         }
 
         /// <summary>
@@ -502,113 +509,6 @@ namespace Sledge.DataStructures.MapObjects
             foreach (var mo in GetChildren())
             {
                 mo.ForEach(matcher, action, forceMatchIfParentMatches);
-            }
-        }
-
-
-        [Serializable]
-        protected class HierarchyInfo
-        {
-            private readonly MapObject _self;
-            public MapObject Parent { get; set; }
-            private HashSet<long> DescendantIDs { get; set; }
-            private Dictionary<long, MapObject> Children { get; set; }
-
-            public int NumChildren => Children.Count;
-            public int NumDescendants => DescendantIDs.Count;
-
-            public HierarchyInfo(MapObject self)
-            {
-                _self = self;
-                DescendantIDs = new HashSet<long>();
-                Children = new Dictionary<long, MapObject>();
-            }
-
-            public void SetParent(MapObject parent, bool updateBoundingBox = true)
-            {
-                if (Parent != null)
-                {
-                    if (Parent.Hierarchy.HasChild(_self.ID) && Parent.Hierarchy.GetChild(_self.ID) == _self) Parent.Hierarchy.RemoveChild(_self);
-                    if (updateBoundingBox) Parent.UpdateBoundingBox();
-                }
-                Parent = parent;
-                if (Parent != null)
-                {
-                    Parent.Hierarchy.AddChild(_self);
-                    if (updateBoundingBox) _self.UpdateBoundingBox();
-                }
-            }
-
-            public IEnumerable<MapObject> GetChildren()
-            {
-                return Children.Values.ToList();
-            }
-
-            public bool HasChild(long id)
-            {
-                return Children.ContainsKey(id);
-            }
-
-            public MapObject GetChild(long id)
-            {
-                if (!HasChild(id)) return null;
-                return Children[id];
-            }
-
-            public bool HasDescendant(long id)
-            {
-                return DescendantIDs.Contains(id);
-            }
-
-            public MapObject GetDescendant(long id)
-            {
-                if (!HasDescendant(id)) return null;
-                if (HasChild(id)) return GetChild(id);
-                var child = Children.FirstOrDefault(x => x.Value.Hierarchy.HasDescendant(id));
-                return child.Value?.Hierarchy.GetDescendant(id);
-            }
-
-            private void AddChild(MapObject child)
-            {
-                Children[child.ID] = child;
-                var set = new HashSet<long>(child.Hierarchy.DescendantIDs) { child.ID };
-
-                var p = _self;
-                while (p != null)
-                {
-                    p.Hierarchy.DescendantIDs.UnionWith(set);
-                    p = p.Parent;
-                }
-            }
-
-            private void RemoveChild(MapObject child)
-            {
-                Children.Remove(child.ID);
-                var set = new HashSet<long>(child.Hierarchy.DescendantIDs) { child.ID };
-
-                var p = _self;
-                while (p != null)
-                {
-                    p.Hierarchy.DescendantIDs.ExceptWith(set);
-                    p = p.Parent;
-                }
-            }
-
-            public void ClearChildren()
-            {
-                var set = DescendantIDs;
-                var p = _self.Parent;
-                while (p != null)
-                {
-                    p.Hierarchy.DescendantIDs.ExceptWith(set);
-                    p = p.Parent;
-                }
-                foreach (var mo in Children.Values)
-                {
-                    mo.Hierarchy.Parent = null;
-                }
-                DescendantIDs.Clear();
-                Children.Clear();
             }
         }
     }

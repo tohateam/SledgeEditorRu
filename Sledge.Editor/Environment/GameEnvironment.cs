@@ -44,22 +44,33 @@ namespace Sledge.Editor.Environment
 
         public IEnumerable<string> GetGameDirectories()
         {
-            // SteamPipe folders: game_addon (custom content), game_downloads (downloaded content)
-            yield return Path.Combine(Game.GameInstallDir, Game.ModDir + "_addon");
-            yield return Path.Combine(Game.GameInstallDir, Game.ModDir + "_downloads");
-
-            // game_hd (high definition content)
-            if (Game.UseHDModels)
+            if (Game.SteamInstall)
             {
-                yield return Path.Combine(Game.GameInstallDir, Game.ModDir + "_hd");
+                // SteamPipe folders: game_addon (custom content), game_downloads (downloaded content)
+                yield return Path.Combine(Sledge.Settings.Steam.SteamDirectory, "steamapps", "common", Game.SteamGameDir, Game.ModDir + "_addon");
+                yield return Path.Combine(Sledge.Settings.Steam.SteamDirectory, "steamapps", "common", Game.SteamGameDir, Game.ModDir + "_downloads");
+
+                // game_hd (high definition content)
+                if (Game.UseHDModels)
+                {
+                    yield return Path.Combine(Sledge.Settings.Steam.SteamDirectory, "steamapps", "common", Game.SteamGameDir, Game.ModDir + "_hd");
+                }
+
+                // Mod and game folders
+                yield return Path.Combine(Sledge.Settings.Steam.SteamDirectory, "steamapps", "common", Game.SteamGameDir, Game.ModDir);
+                if (!String.Equals(Game.BaseDir, Game.ModDir, StringComparison.CurrentCultureIgnoreCase))
+                {
+                    // Do the  SteamPipe folders need to be included here too? Possbly not...
+                    yield return Path.Combine(Sledge.Settings.Steam.SteamDirectory, "steamapps", "common", Game.SteamGameDir, Game.BaseDir);
+                }
             }
-
-            // Mod and game folders
-            yield return Path.Combine(Game.GameInstallDir, Game.ModDir);
-            if (!String.Equals(Game.BaseDir, Game.ModDir, StringComparison.CurrentCultureIgnoreCase))
+            else
             {
-                // Do the  SteamPipe folders need to be included here too? Possbly not...
-                yield return Path.Combine(Game.GameInstallDir, Game.BaseDir);
+                yield return Path.Combine(Game.WonGameDir, Game.ModDir);
+                if (!String.Equals(Game.BaseDir, Game.ModDir, StringComparison.CurrentCultureIgnoreCase))
+                {
+                    yield return Path.Combine(Game.WonGameDir, Game.BaseDir);
+                }
             }
 
             var b = Build;

@@ -3,16 +3,15 @@ using System.Collections.Generic;
 using System.Drawing;
 using OpenTK;
 using Sledge.DataStructures.Geometric;
-using Sledge.Editor.Extensions;
-using Sledge.Editor.Rendering;
+using Sledge.Editor.Tools;
 using Sledge.Editor.Tools.SelectTool;
-using Sledge.Rendering.Cameras;
+using Sledge.UI;
 
 namespace Sledge.Editor.Documents
 {
     internal class DocumentMemory
     {
-        private readonly Dictionary<string, string> _positions;
+        private readonly Dictionary<Viewport2D.ViewDirection, Tuple<Coordinate, decimal>> _positions;
         private Vector3 _cameraLookat;
         private Vector3 _cameraLocation;
         public Type SelectedTool { get; set; }
@@ -22,7 +21,7 @@ namespace Sledge.Editor.Documents
 
         public DocumentMemory()
         {
-            _positions = new Dictionary<string, string>();
+            _positions = new Dictionary<Viewport2D.ViewDirection, Tuple<Coordinate, decimal>>();
             _cameraLocation = new Vector3(0, 0, 0);
             _cameraLookat = new Vector3(1, 0, 0);
             SelectedTool = typeof (SelectTool);
@@ -31,49 +30,52 @@ namespace Sledge.Editor.Documents
 
         public void SetCamera(Coordinate position, Coordinate look)
         {
-            _cameraLocation = position.ToVector3();
-            _cameraLookat = look.ToVector3();
+            _cameraLocation = new Vector3((float)position.X, (float)position.Y, (float)position.Z);
+            _cameraLookat = new Vector3((float)look.X, (float)look.Y, (float)look.Z);
         }
 
-        public void RememberViewports(IEnumerable<MapViewport> viewports)
+        public void RememberViewports(IEnumerable<ViewportBase> viewports)
         {
+            // Todo viewport: remember types and positions
             _positions.Clear();
-            var foundPerspective = false;
             foreach (var vp in viewports)
             {
-                _positions.Add(vp.Viewport.ViewportHandle, Camera.Serialise(vp.Viewport.Camera));
-                if (vp.Viewport.Camera is PerspectiveCamera && !foundPerspective)
+                var vp3 = vp as Viewport3D;
+                var vp2 = vp as Viewport2D;
+                if (vp2 != null)
                 {
-                    var cam = vp.Viewport.Camera as PerspectiveCamera;
+                    if (!_positions.ContainsKey(vp2.Direction))
+                    {
+                        _positions.Add(vp2.Direction, Tuple.Create(vp2.Position, vp2.Zoom));
+                    }
+                }
+                if (vp3 != null)
+                {
+                    var cam = vp3.Camera;
                     _cameraLookat = cam.LookAt;
-                    _cameraLocation = cam.Position;
-                    foundPerspective = true;
+                    _cameraLocation = cam.Location;
                 }
             }
         }
 
-        public void RestoreViewports(IEnumerable<MapViewport> viewports)
+        public void RestoreViewports(IEnumerable<ViewportBase> viewports)
         {
             foreach (var vp in viewports)
             {
-                if (_positions.ContainsKey(vp.Viewport.ViewportHandle))
+                var vp3 = vp as Viewport3D;
+                var vp2 = vp as Viewport2D;
+                if (vp2 != null)
                 {
-                    try
+                    if (_positions.ContainsKey(vp2.Direction))
                     {
-                        var cam = Camera.Deserialise(_positions[vp.Viewport.ViewportHandle]);
-                        vp.Viewport.Camera = cam;
-                        continue;
-                    }
-                    catch
-                    {
-                        // 
+                        vp2.Position = _positions[vp2.Direction].Item1;
+                        vp2.Zoom = _positions[vp2.Direction].Item2;
                     }
                 }
-                if (vp.Viewport.Camera is PerspectiveCamera)
+                if (vp3 != null)
                 {
-                    var cam = vp.Viewport.Camera as PerspectiveCamera;
-                    cam.LookAt = _cameraLookat;
-                    cam.Position = _cameraLocation;
+                    vp3.Camera.Location = _cameraLocation;
+                    vp3.Camera.LookAt = _cameraLookat;
                 }
             }
         }

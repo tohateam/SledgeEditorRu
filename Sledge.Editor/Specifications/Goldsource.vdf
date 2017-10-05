@@ -1,11 +1,14 @@
 ﻿// Goldsource Compile Specification
-// Based on the advanced Zoner spec from Nem's Batch compile
+// Based on the advanced Zoner spec from Nem's Batch compiler
+   
+//csg:
+//    -wadinclude file : place textures used from wad specified into bsp
+
 
 Specification
 {
 	ID "Goldsource VHLT"
 	Name "Modern Goldsource Compile Tools"
-    Engine "Goldsource"
 	
 	Preset
 	{

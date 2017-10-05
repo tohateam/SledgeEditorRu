@@ -27,7 +27,8 @@ namespace Sledge.Settings.GameDetection
                     // game.BaseDir
                     game.ModDir = di.Name;
                     game.Name = dict["game"];
-                    game.GameInstallDir = dir;
+                    game.SteamInstall = false;
+                    game.WonGameDir = dir;
                     yield return game;
                 }
             }

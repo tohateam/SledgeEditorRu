@@ -1,4 +1,9 @@
-﻿namespace Sledge.Editor
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Sledge.Editor
 {
     public enum EditorMediator
     {
@@ -46,10 +51,6 @@
         DocumentTreeObjectsChanged,
         DocumentTreeSelectedFacesChanged,
         DocumentTreeFacesChanged,
-
-        SceneObjectsDeleted,
-        SceneObjectsUpdated,
-        SceneObjectsCreated,
 
         EntityDataChanged,
 

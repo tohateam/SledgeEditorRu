@@ -3,10 +3,10 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using System.Runtime.Serialization;
-using Sledge.Common;
 using Sledge.DataStructures.GameData;
 using Sledge.DataStructures.Geometric;
 using Sledge.DataStructures.Transformations;
+using Sledge.Extensions;
 
 namespace Sledge.DataStructures.MapObjects
 {
@@ -77,7 +77,7 @@ namespace Sledge.DataStructures.MapObjects
 
         public override void UpdateBoundingBox(bool cascadeToParent = true)
         {
-            if (GameData == null && !HasChildren)
+            if (GameData == null && !Children.Any())
             {
                 var sub = new Coordinate(-16, -16, -16);
                 var add = new Coordinate(16, 16, 16);
@@ -89,7 +89,7 @@ namespace Sledge.DataStructures.MapObjects
                 angles = new Coordinate(-DMath.DegreesToRadians(angles.Z), DMath.DegreesToRadians(angles.X), -DMath.DegreesToRadians(angles.Y));
                 var tform = Matrix.Rotation(Quaternion.EulerAngles(angles)).Translate(Origin);
                 if (MetaData.Has<bool>("RotateBoundingBox") && !MetaData.Get<bool>("RotateBoundingBox")) tform = Matrix.Translation(Origin);
-                BoundingBox = MetaData.Get<Box>("BoundingBox").Transform(tform);
+                BoundingBox = MetaData.Get<Box>("BoundingBox").Transform(new UnitMatrixMult(tform));
             }
             else if (GameData != null && GameData.ClassType == ClassType.Point)
             {
@@ -108,7 +108,7 @@ namespace Sledge.DataStructures.MapObjects
                 }
                 BoundingBox = new Box(Origin + sub, Origin + add);
             }
-            else if (HasChildren)
+            else if (Children.Any())
             {
                 BoundingBox = new Box(GetChildren().SelectMany(x => new[] {x.BoundingBox.Start, x.BoundingBox.End}));
             }
@@ -139,7 +139,7 @@ namespace Sledge.DataStructures.MapObjects
         public IEnumerable<Face> GetBoxFaces()
         {
             var faces = new List<Face>();
-            if (HasChildren) return faces;
+            if (Children.Any()) return faces;
 
             var box = BoundingBox.GetBoxFaces();
             var dummySolid = new Solid(-1)

@@ -1,23 +1,20 @@
 ﻿using System;
-using System.ComponentModel;
 using System.Globalization;
 using System.Runtime.Serialization;
-using OpenTK;
-using Sledge.Common;
+using Sledge.Extensions;
 
 namespace Sledge.DataStructures.Geometric
 {
-    [TypeConverter(typeof(CoordinateTypeConverter))]
     [Serializable]
     public class Coordinate : ISerializable
     {
-        public static readonly Coordinate MaxValue = new Coordinate(Decimal.MaxValue, Decimal.MaxValue, Decimal.MaxValue);
-        public static readonly Coordinate MinValue = new Coordinate(Decimal.MinValue, Decimal.MinValue, Decimal.MinValue);
-        public static readonly Coordinate Zero = new Coordinate(0, 0, 0);
-        public static readonly Coordinate One = new Coordinate(1, 1, 1);
-        public static readonly Coordinate UnitX = new Coordinate(1, 0, 0);
-        public static readonly Coordinate UnitY = new Coordinate(0, 1, 0);
-        public static readonly Coordinate UnitZ = new Coordinate(0, 0, 1);
+        public readonly static Coordinate MaxValue = new Coordinate(Decimal.MaxValue, Decimal.MaxValue, Decimal.MaxValue);
+        public readonly static Coordinate MinValue = new Coordinate(Decimal.MinValue, Decimal.MinValue, Decimal.MinValue);
+        public readonly static Coordinate Zero = new Coordinate(0, 0, 0);
+        public readonly static Coordinate One = new Coordinate(1, 1, 1);
+        public readonly static Coordinate UnitX = new Coordinate(1, 0, 0);
+        public readonly static Coordinate UnitY = new Coordinate(0, 1, 0);
+        public readonly static Coordinate UnitZ = new Coordinate(0, 0, 1);
 
         #region X, Y, Z
         private decimal _z;
@@ -88,7 +85,7 @@ namespace Sledge.DataStructures.Geometric
             }
         }
         #endregion
-        
+
         public Coordinate(decimal x, decimal y, decimal z)
         {
             _x = x;
@@ -278,56 +275,6 @@ namespace Sledge.DataStructures.Geometric
         public CoordinateF ToCoordinateF()
         {
             return new CoordinateF((float) _dx, (float) _dy, (float) _dz);
-        }
-    }
-
-    public class CoordinateTypeConverter : TypeConverter
-    {
-        public override bool CanConvertFrom(ITypeDescriptorContext context, Type sourceType)
-        {
-            if (sourceType == typeof(string)) return true;
-            if (sourceType == typeof(CoordinateF)) return true;
-            if (sourceType == typeof(Vector3)) return true;
-            return base.CanConvertFrom(context, sourceType);
-        }
-
-        public override bool CanConvertTo(ITypeDescriptorContext context, Type destinationType)
-        {
-            if (destinationType == typeof(string)) return true;
-            if (destinationType == typeof(CoordinateF)) return true;
-            if (destinationType == typeof(Vector3)) return true;
-            return base.CanConvertTo(context, destinationType);
-        }
-
-        public override object ConvertFrom(ITypeDescriptorContext context, CultureInfo culture, object value)
-        {
-            if (value is string str)
-            {
-                var s = str.Split(' ');
-                return new Coordinate(
-                    decimal.Parse(s[0], NumberStyles.Float, culture),
-                    decimal.Parse(s[1], NumberStyles.Float, culture),
-                    decimal.Parse(s[2], NumberStyles.Float, culture));
-            }
-            if (value is CoordinateF cf)
-            {
-                return new Coordinate((decimal)cf.X, (decimal)cf.Y, (decimal)cf.Z);
-            }
-            if (value is Vector3 v)
-            {
-                return new Coordinate((decimal)v.X, (decimal)v.Y, (decimal)v.Z);
-            }
-            return base.ConvertFrom(context, culture, value);
-        }
-
-        public override object ConvertTo(ITypeDescriptorContext context, CultureInfo culture, object value, Type destinationType)
-        {
-            var v = value as Coordinate;
-            if (v == null) return null;
-            if (destinationType == typeof(string)) return String.Format(culture, "{0} {1} {2}", v.X, v.Y, v.Z);
-            if (destinationType == typeof(CoordinateF)) return new CoordinateF((float) v.X, (float) v.Y, (float) v.Z);
-            if (destinationType == typeof(Vector3)) return new Vector3((float)v.X, (float)v.Y, (float)v.Z);
-            return base.ConvertTo(context, culture, value, destinationType);
         }
     }
 }

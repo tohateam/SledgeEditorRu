@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Text;
+using Sledge.DataStructures.MapObjects;
 using Sledge.Editor.Documents;
 
 namespace Sledge.Editor.History
@@ -8,7 +10,6 @@ namespace Sledge.Editor.History
         string Name { get; }
         bool SkipInStack { get; }
         bool ModifiesState { get; }
-        bool DiscardInStack { get; }
         void Undo(Document document);
         void Redo(Document document);
     }

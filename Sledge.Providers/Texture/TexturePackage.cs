@@ -1,33 +1,50 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
+using Sledge.Graphics.Helpers;
 
 namespace Sledge.Providers.Texture
 {
     public class TexturePackage : IDisposable
     {
-        public string Location { get; }
-        public HashSet<string> Textures { get; }
+        internal TextureProvider Provider { get; private set; }
+        public string PackageRoot { get; private set; }
+        public string PackageRelativePath { get; private set; }
+        public Dictionary<string, TextureItem> Items { get; private set; }
+        private readonly Dictionary<string, TextureItem> _loadedItems;
+        public bool IsBrowsable { get; set; }
 
-        public TexturePackage(string location, IEnumerable<string> textures)
+        public TexturePackage(string packageRoot, string packageRelativePath, TextureProvider provider)
         {
-            Textures = new HashSet<string>(textures.Select(x => x.ToLowerInvariant()));
-            Location = location;
+            Provider = provider;
+            PackageRoot = packageRoot;
+            PackageRelativePath = packageRelativePath;
+            Items = new Dictionary<string, TextureItem>();
+            _loadedItems = new Dictionary<string, TextureItem>();
+            IsBrowsable = true;
+        }
+
+        public void AddTexture(TextureItem item)
+        {
+            if (Items.ContainsKey(item.Name.ToLowerInvariant())) return;
+            Items.Add(item.Name.ToLowerInvariant(), item);
         }
 
         public bool HasTexture(string name)
         {
-            return Textures.Contains(name.ToLowerInvariant());
+            return Items.ContainsKey(name.ToLowerInvariant());
         }
-        
+
         public override string ToString()
         {
-            return Location;
+            return PackageRelativePath;
         }
 
         public void Dispose()
         {
-            Textures.Clear();
+            foreach (var kv in _loadedItems)
+            {
+                TextureHelper.Delete(kv.Value.Name.ToLowerInvariant());
+            }
         }
     }
 }

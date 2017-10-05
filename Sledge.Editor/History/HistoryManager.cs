@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using System.Linq;
 using Sledge.Common.Mediator;
 using Sledge.Editor.Documents;
 
@@ -36,26 +35,15 @@ namespace Sledge.Editor.History
         public void PushStack(string name)
         {
             _stacks.Push(new HistoryStack(name, 100));
-            Mediator.Publish(EditorMediator.HistoryChanged);
         }
 
-        public void PopStack()
+        public void PopStack(IHistoryItem action = null)
         {
-            var popped = _stacks.Pop();
-            var stack = _stacks.Peek();
-
-            foreach (var item in popped.GetHistoryItems().Where(x => !x.DiscardInStack))
+            _stacks.Pop();
+            if (action != null)
             {
-                stack.Add(item);
-
-                if (_stacks.Count == 1 && item.ModifiesState)
-                {
-                    TotalActionsSinceLastSave++;
-                    TotalActionsSinceLastAutoSave++;
-                }
+                AddHistoryItem(action);
             }
-            
-            Mediator.Publish(EditorMediator.HistoryChanged);
         }
 
         public void Undo()
@@ -121,11 +109,6 @@ namespace Sledge.Editor.History
         public bool CanRedo()
         {
             return _stacks.Peek().CanRedo();
-        }
-
-        public IEnumerable<HistoryStack> GetHistoryStacks()
-        {
-            return new List<HistoryStack>(_stacks);
         }
     }
 }

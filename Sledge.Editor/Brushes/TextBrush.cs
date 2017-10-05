@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Text;
+using OpenTK.Graphics;
 using Poly2Tri;
 using Sledge.Common;
 using Sledge.DataStructures.Geometric;
@@ -9,7 +11,6 @@ using Sledge.DataStructures.MapObjects;
 using Sledge.Editor.Brushes.Controls;
 using System.Drawing;
 using System.Drawing.Drawing2D;
-using Sledge.Providers.Texture;
 using Polygon = Poly2Tri.Polygon;
 
 namespace Sledge.Editor.Brushes
@@ -38,7 +39,7 @@ namespace Sledge.Editor.Brushes
             yield return _text;
         }
 
-        public IEnumerable<MapObject> Create(IDGenerator generator, Box box, string texture, int roundDecimals)
+        public IEnumerable<MapObject> Create(IDGenerator generator, Box box, ITexture texture, int roundDecimals)
         {
             var width = box.Width;
             var length = Math.Max(1, Math.Abs((int) box.Length));
@@ -169,7 +170,7 @@ namespace Sledge.Editor.Brushes
                             Parent = solid,
                             Plane = new Plane(arr[0], arr[1], arr[2]),
                             Colour = solid.Colour,
-                            Texture = { Name = texture }
+                            Texture = {Texture = texture}
                         };
                         face.Vertices.AddRange(arr.Select(x => new Vertex(x, face)));
                         face.UpdateBoundingBox();

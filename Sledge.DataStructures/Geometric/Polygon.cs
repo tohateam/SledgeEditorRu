@@ -13,6 +13,7 @@ namespace Sledge.DataStructures.Geometric
     public class Polygon : ISerializable
     {
         public List<Coordinate> Vertices { get; set; }
+        public Plane Plane { get; set; }
 
         /// <summary>
         /// Creates a polygon from a list of points
@@ -21,6 +22,7 @@ namespace Sledge.DataStructures.Geometric
         public Polygon(IEnumerable<Coordinate> vertices)
         {
             Vertices = vertices.ToList();
+            Plane = new Plane(Vertices[0], Vertices[1], Vertices[2]);
             Simplify();
         }
 
@@ -32,11 +34,13 @@ namespace Sledge.DataStructures.Geometric
         /// <param name="radius">The polygon radius</param>
         public Polygon(Plane plane, decimal radius = 1000000m)
         {
+            Plane = plane;
+
             // Get aligned up and right axes to the plane
-            var direction = plane.GetClosestAxisToNormal();
+            var direction = Plane.GetClosestAxisToNormal();
             var tempV = direction == Coordinate.UnitZ ? -Coordinate.UnitY : -Coordinate.UnitZ;
-            var up = tempV.Cross(plane.Normal).Normalise();
-            var right = plane.Normal.Cross(up).Normalise();
+            var up = tempV.Cross(Plane.Normal).Normalise();
+            var right = Plane.Normal.Cross(up).Normalise();
 
             Vertices = new List<Coordinate>
                            {
@@ -51,11 +55,13 @@ namespace Sledge.DataStructures.Geometric
         protected Polygon(SerializationInfo info, StreamingContext context)
         {
             Vertices = ((Coordinate[]) info.GetValue("Vertices", typeof (Coordinate[]))).ToList();
+            Plane = (Plane) info.GetValue("Plane", typeof (Plane));
         }
 
         public void GetObjectData(SerializationInfo info, StreamingContext context)
         {
             info.AddValue("Vertices", Vertices.ToArray());
+            info.AddValue("Plane", Plane);
         }
 
         public Polygon Clone()
@@ -66,11 +72,7 @@ namespace Sledge.DataStructures.Geometric
         public void Unclone(Polygon polygon)
         {
             Vertices = new List<Coordinate>(polygon.Vertices);
-        }
-
-        public Plane GetPlane()
-        {
-            return new Plane(Vertices[0], Vertices[1], Vertices[2]);
+            Plane = polygon.Plane.Clone();
         }
 
         /// <summary>
@@ -97,11 +99,10 @@ namespace Sledge.DataStructures.Geometric
         /// <summary>
         /// Checks that all the points in this polygon are valid.
         /// </summary>
-        /// <returns>True if the polygon is valid</returns>
+        /// <returns>True if the plane is valid</returns>
         public bool IsValid()
         {
-            var plane = GetPlane();
-            return Vertices.All(x => plane.OnPlane(x) == 0);
+            return Vertices.All(x => Plane.OnPlane(x) == 0);
         }
 
         /// <summary>
@@ -131,11 +132,11 @@ namespace Sledge.DataStructures.Geometric
         public void Transform(IUnitTransformation transform)
         {
             Vertices = Vertices.Select(transform.Transform).ToList();
+            Plane = new Plane(Vertices[0], Vertices[1], Vertices[2]);
         }
 
         public bool IsConvex(decimal epsilon = 0.001m)
         {
-            var plane = GetPlane();
             for (var i = 0; i < Vertices.Count; i++)
             {
                 var v1 = Vertices[i];
@@ -144,7 +145,7 @@ namespace Sledge.DataStructures.Geometric
                 var l1 = (v1 - v2).Normalise();
                 var l2 = (v3 - v2).Normalise();
                 var cross = l1.Cross(l2);
-                if (plane.OnPlane(v2 + cross, epsilon) < 0.0001m) return false;
+                if (Plane.OnPlane(v2 + cross, epsilon) < 0.0001m) return false;
             }
             return true;
         }
@@ -161,6 +162,7 @@ namespace Sledge.DataStructures.Geometric
             // 4. Move the polygon back to the original origin
             var origin = GetOrigin();
             Vertices = Vertices.Select(x => (x - origin).Normalise() * radius + origin).ToList();
+            Plane = new Plane(Vertices[0], Vertices[1], Vertices[2]);
         }
 
         /// <summary>
@@ -170,38 +172,14 @@ namespace Sledge.DataStructures.Geometric
         /// <returns>A PlaneClassification value.</returns>
         public PlaneClassification ClassifyAgainstPlane(Plane p)
         {
-            int front, back, onplane;
-            int[] classifications;
-            return ClassifyAgainstPlane(p, out classifications, out front, out back, out onplane);
-        }
+            int front = 0, back = 0, onplane = 0, count = Vertices.Count;
 
-        /// <summary>
-        /// Determines if this polygon is behind, in front, or spanning a plane. Returns calculated data.
-        /// </summary>
-        /// <param name="p">The plane to test against</param>
-        /// <param name="classifications">The OnPlane classification for each vertex</param>
-        /// <param name="front">The number of vertices in front of the plane</param>
-        /// <param name="back">The number of vertices behind the plane</param>
-        /// <param name="onplane">The number of vertices on the plane</param>
-        /// <returns>A PlaneClassification value.</returns>
-        private PlaneClassification ClassifyAgainstPlane(Plane p, out int[] classifications, out int front, out int back, out int onplane)
-        {
-            var count = Vertices.Count;
-            front = 0;
-            back = 0;
-            onplane = 0;
-            classifications = new int[count];
-
-            for (var i = 0; i < Vertices.Count; i++)
+            foreach (var test in Vertices.Select(x => p.OnPlane(x)))
             {
-                var test = p.OnPlane(Vertices[i]);
-
                 // Vertices on the plane are both in front and behind the plane in this context
                 if (test <= 0) back++;
                 if (test >= 0) front++;
                 if (test == 0) onplane++;
-
-                classifications[i] = test;
             }
 
             if (onplane == count) return PlaneClassification.OnPlane;
@@ -213,59 +191,15 @@ namespace Sledge.DataStructures.Geometric
         /// <summary>
         /// Splits this polygon by a clipping plane, discarding the front side.
         /// The original polygon is modified to be the back side of the split.
-        /// If the front side doesn't exist then the polygon won't be modified.
         /// </summary>
         /// <param name="clip">The clipping plane</param>
         public void Split(Plane clip)
         {
-            // Ideally we would just be able to use Split(..., out back) and Unclone(back) but that takes twice as long.
-            // So we copy the whole algorithm and do it inline instead
-
-            int frontCount, backCount, onPlaneCount, count = Vertices.Count;
-            int[] classifications;
-
-            var classify = ClassifyAgainstPlane(clip, out classifications, out frontCount, out backCount, out onPlaneCount);
-
-            // If the polygon doesn't span the plane don't do anything
-            if (classify != PlaneClassification.Spanning)
+            Polygon front, back;
+            if (Split(clip, out back, out front))
             {
-                return;
+                Unclone(back);
             }
-
-            // Get the new back vertices
-            var backVerts = new List<Coordinate>();
-
-            var prev = 0;
-
-            for (var i = 0; i <= count; i++)
-            {
-                var idx = i % count;
-                var end = Vertices[idx];
-                var cls = classifications[idx];
-
-                // Check plane crossing
-                if (i > 0 && cls != 0 && prev != 0 && prev != cls)
-                {
-                    // This line end point has crossed the plane
-                    // Add the line intersect to the 
-                    var start = Vertices[i - 1];
-                    var line = new Line(start, end);
-                    var isect = clip.GetIntersectionPoint(line, true);
-                    if (isect == null) throw new Exception("Expected intersection, got null.");
-                    backVerts.Add(isect);
-                }
-
-                // Add original points
-                if (i < Vertices.Count)
-                {
-                    if (cls <= 0) backVerts.Add(end);
-                }
-
-                prev = cls;
-            }
-
-            // Swap out the vertices
-            Vertices = backVerts;
         }
 
         /// <summary>
@@ -294,19 +228,15 @@ namespace Sledge.DataStructures.Geometric
         /// <returns>True if the split was successful</returns>
         public bool Split(Plane clip, out Polygon back, out Polygon front, out Polygon coplanarBack, out Polygon coplanarFront)
         {
-            int frontCount, backCount, onPlaneCount, count = Vertices.Count;
-            int[] classifications;
-
-            var classify = ClassifyAgainstPlane(clip, out classifications, out frontCount, out backCount, out onPlaneCount);
-
             // If the polygon doesn't span the plane, return false.
+            var classify = ClassifyAgainstPlane(clip);
             if (classify != PlaneClassification.Spanning)
             {
                 back = front = null;
                 coplanarBack = coplanarFront = null;
                 if (classify == PlaneClassification.Back) back = this;
                 else if (classify == PlaneClassification.Front) front = this;
-                else if (GetPlane().Normal.Dot(clip.Normal) > 0) coplanarFront = this;
+                else if (Plane.Normal.Dot(clip.Normal) > 0) coplanarFront = this;
                 else coplanarBack = this;
                 return false;
             }
@@ -316,11 +246,10 @@ namespace Sledge.DataStructures.Geometric
             var frontVerts = new List<Coordinate>();
             var prev = 0;
 
-            for (var i = 0; i <= count; i++)
+            for (var i = 0; i <= Vertices.Count; i++)
             {
-                var idx = i % count;
-                var end = Vertices[idx];
-                var cls = classifications[idx];
+                var end = Vertices[i % Vertices.Count];
+                var cls = clip.OnPlane(end);
 
                 // Check plane crossing
                 if (i > 0 && cls != 0 && prev != 0 && prev != cls)
@@ -356,42 +285,7 @@ namespace Sledge.DataStructures.Geometric
         public void Flip()
         {
             Vertices.Reverse();
-        }
-
-        public Coordinate GetIntersectionPoint(Line line, bool ignoreDirection = false)
-        {
-            var plane = GetPlane();
-            var intersect = plane.GetIntersectionPoint(line, ignoreDirection);
-            if (intersect == null) return null;
-
-            var coordinates = Vertices;
-
-            // http://paulbourke.net/geometry/insidepoly/
-
-            // The angle sum will be 2 * PI if the point is inside the face
-            double sum = 0;
-            for (var i = 0; i < coordinates.Count; i++)
-            {
-                var i1 = i;
-                var i2 = (i + 1) % coordinates.Count;
-
-                // Translate the vertices so that the intersect point is on the origin
-                var v1 = coordinates[i1] - intersect;
-                var v2 = coordinates[i2] - intersect;
-
-                var m1 = v1.VectorMagnitude();
-                var m2 = v2.VectorMagnitude();
-                var nom = m1 * m2;
-                if (nom < 0.001m)
-                {
-                    // intersection is at a vertex
-                    return intersect;
-                }
-                sum += Math.Acos((double)(v1.Dot(v2) / nom));
-            }
-
-            var delta = Math.Abs(sum - Math.PI * 2);
-            return (delta < 0.001d) ? intersect : null;
+            Plane = new Plane(-Plane.Normal, Plane.PointOnPlane);
         }
     }
 }

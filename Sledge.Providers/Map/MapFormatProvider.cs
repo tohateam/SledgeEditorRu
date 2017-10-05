@@ -60,32 +60,6 @@ namespace Sledge.Providers.Map
             parent.GetChildren().OfType<Group>().ToList().ForEach(x => CollectEntities(entities, x));
         }
 
-        /// <summary>
-        /// Same as Plane.GetClosestAxisToNormal(), but prioritises the axes Z, X, Y.
-        /// </summary>
-        /// <param name="plane">Input plane</param>
-        /// <returns>Coordinate.UnitX, Coordinate.UnitY, or Coordinate.UnitZ depending on the plane's normal</returns>
-        private static Coordinate QuakeEdClosestAxisToNormal(Plane plane)
-        {
-            var norm = plane.Normal.Absolute();
-
-            if (norm.Z >= norm.X && norm.Z >= norm.Y) return Coordinate.UnitZ;
-            if (norm.X >= norm.Y) return Coordinate.UnitX;
-            return Coordinate.UnitY;
-        }
-
-        /// <summary>
-        /// Set the initial texture axes for a face in the old-style .MAP format.
-        /// Same as Face.AlignTextureToWorld(), except uses QuakeEdClosestAxisToNormal() instead of Plane.GetClosestAxisToNormal().
-        /// </summary>
-        /// <param name="face">Face to set Texture.UAxis and Texture.VAxis to their default values for the old-style .MAP format</param>
-        private static void QuakeEdAlignTextureToWorld(Face face)
-        {
-            var direction = QuakeEdClosestAxisToNormal(face.Plane);
-            face.Texture.UAxis = direction == Coordinate.UnitX ? Coordinate.UnitY : Coordinate.UnitX;
-            face.Texture.VAxis = direction == Coordinate.UnitZ ? -Coordinate.UnitY : -Coordinate.UnitZ;
-        }
-
         private Face ReadFace(string line, IDGenerator generator)
         {
             const NumberStyles ns = NumberStyles.Float;
@@ -109,23 +83,14 @@ namespace Sledge.Providers.Map
             };
 
             // Cater for older-style map formats
-            // TODO Quake 3: when the MAP face has 24 parts, the last three parts are: content_flags, surface_flags, value
-            if (parts.Count == 21 || parts.Count == 24)
+            if (parts.Count == 21)
             {
-                QuakeEdAlignTextureToWorld(face);
-
-                var xshift = decimal.Parse(parts[16], ns, CultureInfo.InvariantCulture);
-                var yshift = decimal.Parse(parts[17], ns, CultureInfo.InvariantCulture);
-                var rotate = decimal.Parse(parts[18], ns, CultureInfo.InvariantCulture);
-                var xscale = decimal.Parse(parts[19], ns, CultureInfo.InvariantCulture);
-                var yscale = decimal.Parse(parts[20], ns, CultureInfo.InvariantCulture);
-
-                face.SetTextureRotation(-rotate);
-                face.Texture.Rotation = rotate;
-                face.Texture.XScale = xscale;
-                face.Texture.YScale = yscale;
-                face.Texture.XShift = xshift;
-                face.Texture.YShift = yshift;
+                face.AlignTextureToFace();
+                face.Texture.XShift = decimal.Parse(parts[16], ns, CultureInfo.InvariantCulture);
+                face.Texture.YShift = decimal.Parse(parts[17], ns, CultureInfo.InvariantCulture);
+                face.Texture.Rotation = decimal.Parse(parts[18], ns, CultureInfo.InvariantCulture);
+                face.Texture.XScale = decimal.Parse(parts[19], ns, CultureInfo.InvariantCulture);
+                face.Texture.YScale = decimal.Parse(parts[20], ns, CultureInfo.InvariantCulture);
             }
             else
             {
@@ -174,8 +139,6 @@ namespace Sledge.Providers.Map
                 if (String.IsNullOrWhiteSpace(line)) continue;
                 if (line == "}")
                 {
-                    if (!faces.Any()) return null;
-
                     var ret = Solid.CreateFromIntersectingPlanes(faces.Select(x => x.Plane), generator);
                     ret.Colour = Colour.GetRandomBrushColour();
                     foreach (var face in ret.Faces)
@@ -194,23 +157,7 @@ namespace Sledge.Providers.Map
                     ret.UpdateBoundingBox(false);
                     return ret;
                 }
-                else if (line == "patchDef2")
-                {
-                    // Quake 3 has bezier faces
-                    // TODO: support bezier faces...
-                    while (CleanLine(rdr.ReadLine()) != "}")
-                    {
-                        // Skip...
-                    }
-                }
-                else if (line == "brushDef")
-                {
-                    throw new ProviderException("Maps containing the 'brushDef' structure are not currently supported");
-                }
-                else
-                {
-                    faces.Add(ReadFace(line, generator));
-                }
+                faces.Add(ReadFace(line, generator));
             }
             return null;
         }
@@ -226,8 +173,7 @@ namespace Sledge.Providers.Map
 
         private static void ReadProperty(Entity ent, string line)
         {
-            // Quake id1 map sources use tabs between keys and values
-            var split = line.Split(new char[] { ' ', '\t' });
+            var split = line.Split(' ');
             var key = split[0].Trim('"');
 
             var val = String.Join(" ", split.Skip(1)).Trim('"');

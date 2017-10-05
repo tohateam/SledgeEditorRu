@@ -10,9 +10,8 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>Sledge.Common</RootNamespace>
     <AssemblyName>Sledge.Common</AssemblyName>
-    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
-    <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -22,7 +21,6 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
-    <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -31,93 +29,33 @@
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
-    <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="LogicAndTrick.Oy, Version=1.0.2.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\LogicAndTrick.Oy.1.0.2\lib\net45\LogicAndTrick.Oy.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="Newtonsoft.Json, Version=9.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
-      <HintPath>..\packages\Newtonsoft.Json.9.0.1\lib\net45\Newtonsoft.Json.dll</HintPath>
-    </Reference>
     <Reference Include="System" />
-    <Reference Include="System.ComponentModel.Composition" />
     <Reference Include="System.Core" />
     <Reference Include="System.Drawing" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Colour.cs" />
-    <Compile Include="Shell\Commands\CommandExtensions.cs" />
-    <Compile Include="Shell\Commands\CommandIDAttribute.cs" />
-    <Compile Include="Shell\Commands\CommandMessage.cs" />
-    <Compile Include="Shell\Commands\CommandParameters.cs" />
-    <Compile Include="Shell\Commands\ICommand.cs" />
-    <Compile Include="Shell\InternalAttribute.cs" />
-    <Compile Include="Shell\Components\IDialog.cs" />
-    <Compile Include="Shell\Components\IStatusItem.cs" />
-    <Compile Include="Shell\Components\IBottomTabComponent.cs" />
-    <Compile Include="Shell\Components\ISidebarComponent.cs" />
-    <Compile Include="Shell\Components\ITool.cs" />
-    <Compile Include="Shell\Components\OrderHintAttribute.cs" />
-    <Compile Include="Shell\Context\ContextInfo.cs" />
-    <Compile Include="Shell\Context\IContext.cs" />
     <Compile Include="DMath.cs" />
-    <Compile Include="Shell\Context\IContextAware.cs" />
-    <Compile Include="Shell\Documents\FileExtensionInfo.cs" />
-    <Compile Include="Shell\Documents\IDocument.cs" />
-    <Compile Include="Shell\Documents\IDocumentLoader.cs" />
     <Compile Include="Easings\Easing.cs" />
     <Compile Include="Easings\EasingDirection.cs" />
     <Compile Include="Easings\EasingType.cs" />
-    <Compile Include="Extensions\BinaryExtensions.cs" />
     <Compile Include="Extensions\StringExtensions.cs" />
-    <Compile Include="Shell\Hooks\IStartupHook.cs" />
-    <Compile Include="Shell\Hooks\IInitialiseHook.cs" />
-    <Compile Include="Shell\Hooks\IShutdownHook.cs" />
-    <Compile Include="Shell\Hooks\IShuttingDownHook.cs" />
-    <Compile Include="Shell\Hotkeys\CommandHotkey.cs" />
-    <Compile Include="Shell\Hotkeys\DefaultHotkeyAttribute.cs" />
-    <Compile Include="Shell\Hotkeys\IHotkey.cs" />
-    <Compile Include="Logging\Log.cs" />
-    <Compile Include="Logging\LogMessage.cs" />
+    <Compile Include="ITexture.cs" />
     <Compile Include="Mediator\Mediator.cs" />
     <Compile Include="Mediator\IMediatorListener.cs" />
     <Compile Include="Mediator\MediatorExceptionEventArgs.cs" />
     <Compile Include="Mediator\MultiDictionary.cs" />
-    <Compile Include="Shell\Menu\AllowToolbarAttribute.cs" />
-    <Compile Include="Shell\Menu\CommandMenuItem.cs" />
-    <Compile Include="Shell\Menu\IMenuItem.cs" />
-    <Compile Include="Shell\Menu\IMenuItemExtendedProperties.cs" />
-    <Compile Include="Shell\Menu\IMenuItemProvider.cs" />
-    <Compile Include="Shell\Menu\IMenuMetadataProvider.cs" />
-    <Compile Include="Shell\Menu\MenuGroup.cs" />
-    <Compile Include="Shell\Menu\MenuImageAttribute.cs" />
-    <Compile Include="Shell\Menu\MenuItemAttribute.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Shell\Menu\MenuSection.cs" />
-    <Compile Include="Shell\Settings\ISettingEditor.cs" />
-    <Compile Include="Shell\Settings\ISettingEditorFactory.cs" />
-    <Compile Include="Shell\Settings\ISettingsContainer.cs" />
-    <Compile Include="Shell\Settings\ISettingsStore.cs" />
-    <Compile Include="Shell\Settings\JsonSettingsStore.cs" />
-    <Compile Include="Shell\Settings\SettingAttribute.cs" />
-    <Compile Include="Shell\Settings\SettingKey.cs" />
-    <Compile Include="Shell\Settings\SettingStoreExtensions.cs" />
-    <Compile Include="Shell\Settings\SettingValue.cs" />
-    <Compile Include="Tasks\TaskQueue.cs" />
-    <Compile Include="Translations\AutoTranslateAttribute.cs" />
-    <Compile Include="Translations\IManualTranslate.cs" />
-    <Compile Include="Translations\ITranslationStringProvider.cs" />
-    <Compile Include="Translations\TranslationStringsCatalog.cs" />
-    <Compile Include="Translations\TranslationStringsCollection.cs" />
-    <Compile Include="Transport\SerialisedObject.cs" />
-    <Compile Include="Transport\SerialisedObjectExtensions.cs" />
-    <Compile Include="Transport\SerialisedObjectFormatter.cs" />
+    <Compile Include="TextureFlags.cs" />
   </ItemGroup>
-  <ItemGroup>
-    <None Include="packages.config" />
-  </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

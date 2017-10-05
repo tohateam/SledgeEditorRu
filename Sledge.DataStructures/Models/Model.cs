@@ -1,9 +1,10 @@
 using System;
 using System.Collections.Generic;
+using System.Data.Odbc;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.Linq;
-using OpenTK;
+using Sledge.Common;
 using Sledge.DataStructures.Geometric;
 
 namespace Sledge.DataStructures.Models
@@ -39,7 +40,7 @@ namespace Sledge.DataStructures.Models
                     from mesh in GetActiveMeshes()
                     from vertex in mesh.Vertices
                     let transform = transforms[vertex.BoneWeightings.First().Bone.BoneIndex]
-                    let cf = Vector3.Transform(vertex.Location, new Matrix3(transform))
+                    let cf = vertex.Location * transform
                     select new Coordinate((decimal) cf.X, (decimal) cf.Y, (decimal) cf.Z);
                 _boundingBox = new Box(list);
             }
@@ -62,7 +63,7 @@ namespace Sledge.DataStructures.Models
             g.AddMesh(groupid, mesh);
         }
 
-        public List<Matrix4> GetTransforms(int animation = 0, int frame = 0)
+        public List<MatrixF> GetTransforms(int animation = 0, int frame = 0)
         {
             if (Animations.Count > animation && animation >= 0)
             {
@@ -179,21 +180,21 @@ namespace Sledge.DataStructures.Models
                     var transform = transforms[v.BoneWeightings.First().Bone.BoneIndex];
 
                     // Borrowed from HLMV's StudioModel::Chrome function
-                    var tmp = transform.ExtractTranslation().Normalized();
+                    var tmp = transform.Shift.Normalise();
 
                     // Using unitx for the "player right" vector
-                    var up = Vector3.Cross(tmp, Vector3.UnitX).Normalized();
-                    var right = Vector3.Cross(tmp, up).Normalized();
+                    var up = tmp.Cross(CoordinateF.UnitX).Normalise();
+                    var right = tmp.Cross(up).Normalise();
 
                     // HLMV is doing an inverse rotate (no translation),
                     // so we set the shift values to zero after inverting
-                    var inv = transform.Inverted();
-                    inv.Row3 = Vector4.UnitW;
-                    up = Vector3.Transform(up, new Matrix3(inv));
-                    right = Vector3.Transform(right, new Matrix3(inv));
+                    var inv = transform.Inverse();
+                    inv[12] = inv[13] = inv[14] = 0;
+                    up = up * inv;
+                    right = right * inv;
 
-                    v.TextureU = (Vector3.Dot(v.Normal, right) + 1) * 32;
-                    v.TextureV = (Vector3.Dot(v.Normal, up) + 1) * 32;
+                    v.TextureU = (v.Normal.Dot(right) + 1) * 32;
+                    v.TextureV = (v.Normal.Dot(up) + 1) * 32;
                 }
             }
         }
@@ -221,6 +222,7 @@ namespace Sledge.DataStructures.Models
             foreach (var t in Textures)
             {
                 if (t.Image != null) t.Image.Dispose();
+                if (t.TextureObject != null) t.TextureObject.Dispose();
             }
         }
     }

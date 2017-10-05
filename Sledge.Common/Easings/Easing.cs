@@ -1,4 +1,5 @@
 using System;
+using Sledge.Extensions;
 
 namespace Sledge.Common.Easings
 {

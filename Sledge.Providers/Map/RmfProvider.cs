@@ -62,9 +62,6 @@ namespace Sledge.Providers.Map
             var worldspawn = ReadWorldSpawn(br, map.Visgroups, map.IDGenerator);
             map.WorldSpawn = worldspawn;
 
-            // Some RMF files might not have the DOCINFO block so we check if we're at the end of the stream
-            if (br.BaseStream.Position == br.BaseStream.Length) return map;
-
             // DOCINFO string check
             var docinfo = br.ReadFixedLengthString(Encoding.UTF8, 8);
             if (docinfo != "DOCINFO")
@@ -221,7 +218,7 @@ namespace Sledge.Providers.Map
             for (var i = 0; i < numChildren; i++)
             {
                 var child = ReadMapObject(br, visgroups, generator);
-                if (child != null) child.SetParent(obj);
+                child.SetParent(obj);
             }
         }
 
@@ -333,7 +330,6 @@ namespace Sledge.Providers.Map
         {
             var grp = new Group(generator.GetNextObjectID());
             ReadMapBase(br, grp, visgroups, generator);
-            if (!grp.HasChildren) return null;
             grp.UpdateBoundingBox(false);
             return grp;
         }

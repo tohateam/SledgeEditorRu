@@ -10,8 +10,7 @@ namespace Sledge.QuickForms.Items
 	public abstract class QuickFormItem
 	{
 		protected string Name;
-	    protected string Label;
-        public abstract List<Control> GetControls(QuickForm qf);
+		public abstract List<Control> GetControls(QuickForm qf);
 		
 		protected void Anchor(Control c)
 		{

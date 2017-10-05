@@ -22,13 +22,13 @@ namespace Sledge.Editor.Tools
             Tools.Add(new SelectTool.SelectTool());
             Tools.Add(new CameraTool());
             Tools.Add(new EntityTool());
-            Tools.Add(new BrushTool.BrushTool());
+            Tools.Add(new BrushTool());
             Tools.Add(new TextureTool.TextureTool());
             Tools.Add(new DecalTool());
             //Tools.Add(new DisplacementTool());
             Tools.Add(new ClipTool());
             Tools.Add(new VMTool.VMTool());
-            Tools.Add(new CordonTool.CordonTool());
+            Tools.Add(new CordonTool());
             //Tools.Add(new SketchTool());
         }
 

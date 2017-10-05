@@ -1,9 +1,11 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
 using Sledge.DataStructures.Geometric;
 using Sledge.DataStructures.MapObjects;
 using Sledge.Common;
 using Sledge.Editor.Brushes.Controls;
-using Sledge.Providers.Texture;
 
 namespace Sledge.Editor.Brushes
 {
@@ -12,6 +14,6 @@ namespace Sledge.Editor.Brushes
         string Name { get; }
         bool CanRound { get; }
         IEnumerable<BrushControl> GetControls();
-        IEnumerable<MapObject> Create(IDGenerator generator, Box box, string texture, int roundDecimals);
+        IEnumerable<MapObject> Create(IDGenerator generator, Box box, ITexture texture, int roundDecimals);
     }
 }

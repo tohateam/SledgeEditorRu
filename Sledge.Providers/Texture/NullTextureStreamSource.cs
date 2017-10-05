@@ -1,6 +1,10 @@
-﻿using System.Drawing;
+﻿using System;
+using System.Collections.Generic;
+using System.Drawing;
 using System.Drawing.Imaging;
-using System.Threading.Tasks;
+using System.Linq;
+using System.Text;
+using Sledge.Common;
 
 namespace Sledge.Providers.Texture
 {
@@ -9,29 +13,40 @@ namespace Sledge.Providers.Texture
         private static readonly Bitmap PlaceholderImage;
         static NullTextureStreamSource()
         {
-            PlaceholderImage = new Bitmap(16, 16, PixelFormat.Format32bppArgb);
-            using (var g = Graphics.FromImage(PlaceholderImage))
+            PlaceholderImage = new Bitmap(64, 64, PixelFormat.Format32bppArgb);
+            using (var g = System.Drawing.Graphics.FromImage(PlaceholderImage))
             {
-                g.FillRectangle(Brushes.Black, 0, 0, 16, 16);
-                g.FillRectangle(Brushes.Magenta, 8, 0, 8, 8);
-                g.FillRectangle(Brushes.Magenta, 0, 8, 8, 8);
+                g.FillRectangle(Brushes.Black, 0, 0, 64, 64);
+                for (var i = 0; i < 64; i++)
+                {
+                    var x = i % 8;
+                    var y = i / 8;
+                    if (y % 2 == x % 2) continue;
+                    g.FillRectangle(Brushes.Magenta, x * 8, y * 8, 8, 8);
+                }
             }
         }
 
-        public bool HasImage(string item)
+        private readonly int _maxWidth;
+        private readonly int _maxHeight;
+
+        public NullTextureStreamSource(int maxWidth, int maxHeight)
         {
-            return true;
+            _maxWidth = maxWidth;
+            _maxHeight = maxHeight;
         }
 
-        public Task<Bitmap> GetImage(string item, int maxWidth, int maxHeight)
+        public bool HasImage(TextureItem item)
         {
-            return Task.Factory.StartNew(() =>
+            return item.Flags.HasFlag(TextureFlags.Missing);
+        }
+
+        public Bitmap GetImage(TextureItem item)
+        {
+            lock (PlaceholderImage)
             {
-                lock (PlaceholderImage)
-                {
-                    return new Bitmap(PlaceholderImage);
-                }
-            });
+                return new Bitmap(PlaceholderImage);
+            }
         }
 
         public void Dispose()

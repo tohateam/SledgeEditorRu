@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using System.Windows.Forms;
 using Sledge.Common.Mediator;
 using Sledge.Editor.Tools;
+using Sledge.Settings;
 
 namespace Sledge.Editor.UI.Sidebar
 {
@@ -34,7 +36,8 @@ namespace Sledge.Editor.UI.Sidebar
             CreatePanel("Textures", new TextureSidebarPanel());
             CreatePanel("Visgroups", new VisgroupSidebarPanel());
             CreatePanel("Contextual Help", new HelpSidebarPanel());
-            //CreatePanel("History", new HistorySiderbarPanel());
+            //CreatePanel("Entities", new EntitySidebarPanel());
+            //CreatePanel("Brushes", new BrushSidebarPanel());
         }
 
         private static SidebarPanel CreatePanel(string text, Control contents, bool insert = false)

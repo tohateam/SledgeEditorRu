@@ -1,14 +1,13 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Drawing;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 using System.Windows.Forms;
-using LogicAndTrick.Gimme;
 using OpenTK;
+using Sledge.Common;
 using Sledge.Common.Mediator;
 using Sledge.DataStructures.GameData;
 using Sledge.DataStructures.Geometric;
@@ -16,20 +15,22 @@ using Sledge.DataStructures.MapObjects;
 using Sledge.Editor.Actions;
 using Sledge.Editor.Editing;
 using Sledge.Editor.Environment;
+using Sledge.Editor.Extensions;
 using Sledge.Editor.History;
 using Sledge.Editor.Rendering;
+using Sledge.Editor.Rendering.Helpers;
 using Sledge.Editor.Settings;
 using Sledge.Editor.Tools;
 using Sledge.Editor.UI;
+using Sledge.FileSystem;
+using Sledge.Graphics.Helpers;
 using Sledge.Providers;
 using Sledge.Providers.GameData;
 using Sledge.Providers.Map;
 using Sledge.Providers.Texture;
-using Sledge.Rendering.Cameras;
-using Sledge.Rendering.Scenes;
 using Sledge.Settings;
 using Sledge.Settings.Models;
-using Camera = Sledge.DataStructures.MapObjects.Camera;
+using Sledge.UI;
 using Path = System.IO.Path;
 
 namespace Sledge.Editor.Documents
@@ -46,24 +47,23 @@ namespace Sledge.Editor.Documents
 
         public Pointfile Pointfile { get; set; }
 
+        public RenderManager Renderer { get; private set; }
+
         public SelectionManager Selection { get; private set; }
         public HistoryManager History { get; private set; }
+        public HelperManager HelperManager { get; set; }
         public TextureCollection TextureCollection { get; set; }
-        public ModelCollection ModelCollection { get; private set; }    
 
         private readonly DocumentSubscriptions _subscriptions;
         private readonly DocumentMemory _memory;
-
-        public Scene Scene { get; private set; }
-        public SceneManager SceneManager { get; private set; }
 
         private Document()
         {
             Map = new Map();
             Selection = new SelectionManager(this);
             History = new HistoryManager(this);
+            HelperManager = new HelperManager(this);
             TextureCollection = new TextureCollection(new List<TexturePackage>());
-            ModelCollection = new ModelCollection();
         }
 
         public Document(string mapFile, Map map, Game game)
@@ -106,20 +106,21 @@ namespace Sledge.Editor.Documents
                 GameData.MapSizeLow = game.OverrideMapSizeLow;
                 GameData.MapSizeHigh = game.OverrideMapSizeHigh;
             }
-            
-            TextureCollection = new TextureCollection(new List<TexturePackage>());
-            TextureCache.CreateCollection(Environment.GetGameDirectories()).ContinueWith(x =>
-            {
-                TextureCollection = x.Result;
-                SceneManager.Update();
-            });
-            
-            ModelCollection = new ModelCollection();
 
-            Map.PostLoadProcess(GameData, SettingsManager.GetSpecialTextureOpacity);
+            TextureCollection = TextureProvider.CreateCollection(Environment.GetGameDirectories(), Game.AdditionalPackages, Game.GetTextureBlacklist(), Game.GetTextureWhitelist());
+            /* .Union(GameData.MaterialExclusions) */ // todo material exclusions
 
-            Scene = SceneManager.Engine.Renderer.CreateScene();
-            SceneManager = new SceneManager(this);
+            var texList = Map.GetAllTextures();
+            var items = TextureCollection.GetItems(texList);
+            TextureProvider.LoadTextureItems(items);
+
+            Map.PostLoadProcess(GameData, GetTexture, SettingsManager.GetSpecialTextureOpacity);
+            Map.UpdateDecals(this);
+            Map.UpdateModels(this);
+            Map.UpdateSprites(this);
+
+            HelperManager = new HelperManager(this);
+            Renderer = new RenderManager(this);
 
             if (MapFile != null) Mediator.Publish(EditorMediator.FileOpened, MapFile);
 
@@ -145,14 +146,11 @@ namespace Sledge.Editor.Documents
         {
             if (!Sledge.Settings.View.KeepSelectedTool) ToolManager.Activate(_memory.SelectedTool);
             if (!Sledge.Settings.View.KeepCameraPositions) _memory.RestoreViewports(ViewportManager.Viewports);
-            UpdateRendererSettings();
 
-            SceneManager.SetActive();
-
-            // ViewportManager.AddContext3D(new WidgetLinesRenderable());
-            // Renderer.Register(ViewportManager.Viewports);
-            // ViewportManager.AddContextAll(new ToolRenderable());
-            // ViewportManager.AddContextAll(new HelperRenderable(this));
+            ViewportManager.AddContext3D(new WidgetLinesRenderable());
+            Renderer.Register(ViewportManager.Viewports);
+            ViewportManager.AddContextAll(new ToolRenderable());
+            ViewportManager.AddContextAll(new HelperRenderable(this));
 
             _subscriptions.Subscribe();
 
@@ -164,12 +162,8 @@ namespace Sledge.Editor.Documents
             if (!Sledge.Settings.View.KeepSelectedTool && ToolManager.ActiveTool != null) _memory.SelectedTool = ToolManager.ActiveTool.GetType();
             if (!Sledge.Settings.View.KeepCameraPositions) _memory.RememberViewports(ViewportManager.Viewports);
 
-            // ViewportManager.ClearContexts();
-            //HelperManager.ClearCache();
-            
-            // todo memory leak: model/texture resources are not being freed
-            // Should delete textures when they're no longer referenced by any document
-            // probably should be handled by the engine/renderer as well
+            ViewportManager.ClearContexts();
+            HelperManager.ClearCache();
 
             _subscriptions.Unsubscribe();
         }
@@ -177,9 +171,8 @@ namespace Sledge.Editor.Documents
         public void Close()
         {
             Scheduler.Clear(this);
-            TextureCache.DestroyCollection(TextureCollection);
-            ModelCollection.Dispose();
-            SceneManager.Engine.Renderer.RemoveScene(Scene);
+            TextureProvider.DeleteCollection(TextureCollection);
+            Renderer.Dispose();
         }
 
         public bool SaveFile(string path = null, bool forceOverride = false, bool switchPath = true)
@@ -202,7 +195,7 @@ namespace Sledge.Editor.Documents
             if (path == null) return false;
 
             // Save the 3D camera position
-            var cam = ViewportManager.Viewports.Select(x => x.Viewport.Camera).OfType<PerspectiveCamera>().FirstOrDefault();
+            var cam = ViewportManager.Viewports.OfType<Viewport3D>().Select(x => x.Camera).FirstOrDefault();
             if (cam != null)
             {
                 if (Map.ActiveCamera == null)
@@ -211,14 +204,14 @@ namespace Sledge.Editor.Documents
                     if (!Map.Cameras.Contains(Map.ActiveCamera)) Map.Cameras.Add(Map.ActiveCamera);
                 }
                 var dist = (Map.ActiveCamera.LookPosition - Map.ActiveCamera.EyePosition).VectorMagnitude();
-                var loc = cam.Position;
-                var look = cam.LookAt - cam.Position;
+                var loc = cam.Location;
+                var look = cam.LookAt - cam.Location;
                 look.Normalize();
                 look = loc + look * (float) dist;
                 Map.ActiveCamera.EyePosition = new Coordinate((decimal)loc.X, (decimal)loc.Y, (decimal)loc.Z);
                 Map.ActiveCamera.LookPosition = new Coordinate((decimal)look.X, (decimal)look.Y, (decimal)look.Z);
             }
-            Map.WorldSpawn.EntityData.SetPropertyValue("wad", string.Join(";", GetUsedTexturePackages().Select(x => x.Location).Where(x => x.EndsWith(".wad"))));
+            Map.WorldSpawn.EntityData.SetPropertyValue("wad", string.Join(";", GetUsedTexturePackages().Select(x => x.PackageRoot).Where(x => x.EndsWith(".wad"))));
             MapProvider.SaveMapToFile(path, Map);
             if (switchPath)
             {
@@ -328,7 +321,7 @@ namespace Sledge.Editor.Documents
         }
 
         /// <summary>
-        /// Performs the action and adds it to the history stack
+        /// Performs the action, adds it to the history stack, and optionally updates the display lists
         /// </summary>
         /// <param name="name">The name of the action, for history purposes</param>
         /// <param name="action">The action to perform</param>
@@ -360,42 +353,93 @@ namespace Sledge.Editor.Documents
         public void SetSelectListTransform(Matrix4 matrix)
         {
             SelectListTransform = matrix;
-            SceneManager.Engine.Renderer.SelectionTransform = SelectListTransform;
+            Renderer.SetSelectionTransform(matrix);
         }
 
         public void EndSelectionTransform()
         {
             SelectListTransform = Matrix4.Identity;
-            SceneManager.Engine.Renderer.SelectionTransform = SelectListTransform;
+            Renderer.SetSelectionTransform(Matrix4.Identity);
         }
 
-        public Size GetTextureSize(string name)
+        public ITexture GetTexture(string name)
         {
-            var tex = TextureCollection.TryGetTextureItem(name);
-            return tex == null ? Size.Empty : new Size(tex.Width, tex.Height);
+            if (!TextureHelper.Exists(name))
+            {
+                var ti = TextureCollection.GetItem(name);
+                if (ti != null)
+                {
+                    TextureProvider.LoadTextureItem(ti);
+                }
+            }
+            return TextureHelper.Get(name);
         }
 
         public void RenderAll()
         {
-            var all = Map.WorldSpawn.FindAll();
-            SceneManager.Update(all);
+            Map.PartialPostLoadProcess(GameData, GetTexture, SettingsManager.GetSpecialTextureOpacity);
+
+            var decalsUpdated = Map.UpdateDecals(this);
+            var modelsUpdated = Map.UpdateModels(this);
+            var spritesUpdated = Map.UpdateSprites(this);
+            if (decalsUpdated || modelsUpdated || spritesUpdated) Mediator.Publish(EditorMediator.SelectionChanged);
+
+            HelperManager.UpdateCache();
+            Renderer.Update();
+            ViewportManager.Viewports.ForEach(vp => vp.UpdateNextFrame());
         }
 
-        public void RenderSelection()
+        public void RenderSelection(IEnumerable<MapObject> objects)
         {
-            if (Selection.InFaceSelection) RenderFaces(Selection.GetSelectedFaces());
-            else RenderObjects(Selection.GetSelectedObjects());
+            Renderer.UpdateSelection(objects);
+            ViewportManager.Viewports.ForEach(vp => vp.UpdateNextFrame());
         }
 
         public void RenderObjects(IEnumerable<MapObject> objects)
         {
-            SceneManager.Update(objects.ToList());
+            var objs = objects.ToList();
+            Map.PartialPostLoadProcess(GameData, GetTexture, SettingsManager.GetSpecialTextureOpacity);
+
+            var decalsUpdated = Map.UpdateDecals(this, objs);
+            var modelsUpdated = Map.UpdateModels(this, objs);
+            var spritesUpdated = Map.UpdateSprites(this, objs);
+            if (decalsUpdated || modelsUpdated || spritesUpdated) Mediator.Publish(EditorMediator.SelectionChanged);
+
+            HelperManager.UpdateCache();
+
+            // If the models/decals changed, we need to do a full update
+            if (modelsUpdated || decalsUpdated || spritesUpdated) Renderer.Update();
+            else Renderer.UpdatePartial(objs);
+
+            ViewportManager.Viewports.ForEach(vp => vp.UpdateNextFrame());
         }
 
         public void RenderFaces(IEnumerable<Face> faces)
         {
-            var objs = faces.Select(x => x.Parent).Distinct().OfType<MapObject>().ToList();
-            SceneManager.Update(objs);
+            Map.PartialPostLoadProcess(GameData, GetTexture, SettingsManager.GetSpecialTextureOpacity);
+            // No need to update decals or models here: they can only be changed via entity properties
+            HelperManager.UpdateCache();
+            Renderer.UpdatePartial(faces);
+            ViewportManager.Viewports.ForEach(vp => vp.UpdateNextFrame());
+        }
+
+        public void Make3D(ViewportBase viewport, Viewport3D.ViewType type)
+        {
+            var vp = ViewportManager.Make3D(viewport, type);
+            vp.RenderContext.Add(new WidgetLinesRenderable());
+            Renderer.Register(new[] { vp });
+            vp.RenderContext.Add(new ToolRenderable());
+            vp.RenderContext.Add(new HelperRenderable(this));
+            Renderer.UpdateGrid(Map.GridSpacing, Map.Show2DGrid, Map.Show3DGrid, false);
+        }
+
+        public void Make2D(ViewportBase viewport, Viewport2D.ViewDirection direction)
+        {
+            var vp = ViewportManager.Make2D(viewport, direction);
+            Renderer.Register(new[] { vp });
+            vp.RenderContext.Add(new ToolRenderable());
+            vp.RenderContext.Add(new HelperRenderable(this));
+            Renderer.UpdateGrid(Map.GridSpacing, Map.Show2DGrid, Map.Show3DGrid, false);
         }
 
         public IEnumerable<string> GetUsedTextures()
@@ -407,12 +451,6 @@ namespace Sledge.Editor.Documents
         {
             var used = GetUsedTextures().ToList();
             return TextureCollection.Packages.Where(x => used.Any(x.HasTexture));
-        }
-
-        public void UpdateRendererSettings()
-        {
-            SceneManager.Engine.Renderer.Settings.PerspectiveGridSpacing = (float) Map.GridSpacing;
-            SceneManager.Engine.Renderer.Settings.ShowPerspectiveGrid = Map.Show3DGrid;
         }
     }
 }

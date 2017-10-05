@@ -1,7 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
 using System.Drawing;
 using System.Linq;
+using System.Text;
 using System.Windows.Forms;
 using Sledge.Common;
 using Sledge.DataStructures.MapObjects;
@@ -10,7 +13,6 @@ using Sledge.Editor.Actions.MapObjects.Operations;
 using Sledge.Editor.Actions.MapObjects.Selection;
 using Sledge.Editor.Documents;
 using Sledge.Providers.Texture;
-using Sledge.Rendering.Materials;
 
 namespace Sledge.Editor.UI
 {
@@ -37,7 +39,7 @@ namespace Sledge.Editor.UI
             if (_document.TextureCollection.SelectedTexture != null)
             {
                 var tex = _document.TextureCollection.SelectedTexture;
-                Find.Text = tex;
+                Find.Text = tex.Name;
             }
         }
 
@@ -60,9 +62,9 @@ namespace Sledge.Editor.UI
             return String.Equals(name, match, StringComparison.InvariantCultureIgnoreCase);
         }
 
-        private IEnumerable<Tuple<string, string>> GetReplacements(IEnumerable<string> names)
+        private IEnumerable<Tuple<string, TextureItem, ITexture>> GetReplacements(IEnumerable<string> names)
         {
-            var list = new List<Tuple<string, string>>();
+            var list = new List<Tuple<string, TextureItem, ITexture>>();
             var substitute = ActionSubstitute.Checked;
             var find = Find.Text.ToLowerInvariant();
             var replace = Replace.Text.ToLowerInvariant();
@@ -70,7 +72,11 @@ namespace Sledge.Editor.UI
             foreach (var name in names.Select(x => x.ToLowerInvariant()).Distinct())
             {
                 var n = substitute ? name.Replace(find, replace) : replace;
-                list.Add(Tuple.Create(name, n));
+
+                var item = _document.TextureCollection.GetItem(n);
+                if (item == null) continue;
+
+                list.Add(Tuple.Create(name, item, item.GetTexture()));
             }
             return list;
         }
@@ -90,16 +96,16 @@ namespace Sledge.Editor.UI
                                                     if (repl == null) return;
                                                     if (rescale)
                                                     {
-                                                        // todo
-                                                        throw new NotImplementedException();
-                                                        //var item = _document.TextureCollection.GetItem(face.Texture.Name);
-                                                        //if (item != null)
-                                                        //{
-                                                        //    face.Texture.XScale *= item.Width / (decimal)repl.Item2.Width;
-                                                        //    face.Texture.YScale *= item.Height / (decimal)repl.Item2.Height;
-                                                        //}
+                                                        var item = _document.TextureCollection.GetItem(face.Texture.Name);
+                                                        if (item != null)
+                                                        {
+                                                            face.Texture.XScale *= item.Width / (decimal)repl.Item2.Width;
+                                                            face.Texture.YScale *= item.Height / (decimal)repl.Item2.Height;
+                                                        }
                                                     }
-                                                    face.Texture.Name = repl.Item2;
+                                                    face.Texture.Name = repl.Item2.Name;
+                                                    face.Texture.Texture = repl.Item3;
+                                                    face.CalculateTextureCoordinates(true);
                                                 };
             return new EditFace(faces, action, true);
         }
@@ -113,14 +119,13 @@ namespace Sledge.Editor.UI
 
         private void BrowseTexture(TextBox box)
         {
-            using (var tb = new TextureBrowser(_document))
+            using (var tb = new TextureBrowser())
             {
-                throw new NotImplementedException();
-                // todo tb.SetTextureList(_document.TextureCollection.GetAllBrowsableItems());
+                tb.SetTextureList(_document.TextureCollection.GetAllBrowsableItems());
                 tb.ShowDialog();
                 if (tb.SelectedTexture != null)
                 {
-                    box.Text = tb.SelectedTexture;
+                    box.Text = tb.SelectedTexture.Name;
                 }
             }
         }
@@ -134,21 +139,20 @@ namespace Sledge.Editor.UI
                 return;
             }
 
-            var item = text;
+            var item = _document.TextureCollection.GetItem(text)
+                       ?? new TextureItem(null, text, TextureFlags.Missing, 64, 64);
 
-            // todo texture
-            throw new NotImplementedException();
-            //using (var tp = _document.TextureCollection.GetStreamSource(128, 128))
-            //{
-            //    var bmp = tp.GetImage(item);
-            //    image.SizeMode = bmp.Width > image.Width || bmp.Height > image.Height
-            //                         ? PictureBoxSizeMode.Zoom
-            //                         : PictureBoxSizeMode.CenterImage;
-            //    image.Image = bmp;
-            //}
+            using (var tp = _document.TextureCollection.GetStreamSource(128, 128))
+            {
+                var bmp = tp.GetImage(item);
+                image.SizeMode = bmp.Width > image.Width || bmp.Height > image.Height
+                                     ? PictureBoxSizeMode.Zoom
+                                     : PictureBoxSizeMode.CenterImage;
+                image.Image = bmp;
+            }
 
-            //var format = item.Flags.HasFlag(TextureFlags.Missing) ? "Invalid texture" : "{0} x {1}";
-            //info.Text = string.Format(format, item.Width, item.Height);
+            var format = item.Flags.HasFlag(TextureFlags.Missing) ? "Invalid texture" : "{0} x {1}";
+            info.Text = string.Format(format, item.Width, item.Height);
         }
     }
 }

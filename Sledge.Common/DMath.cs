@@ -1,6 +1,7 @@
 ﻿using System;
+using System.Linq;
 
-namespace Sledge.Common
+namespace Sledge.Extensions
 {
     public static class DMath
     {

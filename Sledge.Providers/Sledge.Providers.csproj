@@ -10,9 +10,8 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>Sledge.Providers</RootNamespace>
     <AssemblyName>Sledge.Providers</AssemblyName>
-    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
-    <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|AnyCPU'">
     <DebugSymbols>true</DebugSymbols>
@@ -22,7 +21,6 @@
     <PlatformTarget>AnyCPU</PlatformTarget>
     <ErrorReport>prompt</ErrorReport>
     <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
-    <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|AnyCPU'">
     <OutputPath>bin\Release\</OutputPath>
@@ -32,46 +30,21 @@
     <PlatformTarget>AnyCPU</PlatformTarget>
     <ErrorReport>prompt</ErrorReport>
     <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
-    <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="LogicAndTrick.Gimme, Version=1.3.2.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\LogicAndTrick.Gimme.1.3.2\lib\net45\LogicAndTrick.Gimme.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="OpenTK, Version=2.0.0.0, Culture=neutral, PublicKeyToken=bad199fe84eb3df4, processorArchitecture=MSIL">
-      <HintPath>..\packages\OpenTK.2.0.0\lib\net20\OpenTK.dll</HintPath>
-      <Private>True</Private>
+    <Reference Include="OpenTK">
+      <HintPath>..\packages\OpenTK.dll</HintPath>
     </Reference>
     <Reference Include="System" />
-    <Reference Include="System.ComponentModel.Composition" />
     <Reference Include="System.Core" />
     <Reference Include="System.Drawing" />
-    <Reference Include="System.Reactive.Core, Version=3.0.1000.0, Culture=neutral, PublicKeyToken=94bc3704cddfc263, processorArchitecture=MSIL">
-      <HintPath>..\packages\System.Reactive.Core.3.1.1\lib\net45\System.Reactive.Core.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="System.Reactive.Interfaces, Version=3.0.1000.0, Culture=neutral, PublicKeyToken=94bc3704cddfc263, processorArchitecture=MSIL">
-      <HintPath>..\packages\System.Reactive.Interfaces.3.1.1\lib\net45\System.Reactive.Interfaces.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="System.Reactive.Linq, Version=3.0.1000.0, Culture=neutral, PublicKeyToken=94bc3704cddfc263, processorArchitecture=MSIL">
-      <HintPath>..\packages\System.Reactive.Linq.3.1.1\lib\net45\System.Reactive.Linq.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="System.Reactive.PlatformServices, Version=3.0.1000.0, Culture=neutral, PublicKeyToken=94bc3704cddfc263, processorArchitecture=MSIL">
-      <HintPath>..\packages\System.Reactive.PlatformServices.3.1.1\lib\net45\System.Reactive.PlatformServices.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="System.Reactive.Windows.Threading, Version=3.0.1000.0, Culture=neutral, PublicKeyToken=94bc3704cddfc263, processorArchitecture=MSIL">
-      <HintPath>..\packages\System.Reactive.Windows.Threading.3.1.1\lib\net45\System.Reactive.Windows.Threading.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="System.Windows" />
-    <Reference Include="WindowsBase" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="GameData\FgdGameDataProvider.cs" />
     <Compile Include="GameData\FgdProvider.cs" />
     <Compile Include="GameData\GameDataProvider.cs" />
     <Compile Include="GenericStructure.cs" />
@@ -87,50 +60,47 @@
     <Compile Include="ProviderException.cs" />
     <Compile Include="ProviderNotFoundException.cs" />
     <Compile Include="Map\RmfProvider.cs" />
-    <Compile Include="ProviderRegistration.cs" />
-    <Compile Include="Texture\MultiTextureStreamSource.cs" />
-    <Compile Include="Texture\Wad\WadTextureItemProvider.cs" />
     <Compile Include="Texture\NullTextureStreamSource.cs" />
     <Compile Include="Texture\TextureSubItemType.cs" />
+    <Compile Include="Texture\VmtProvider.cs" />
     <Compile Include="Texture\SpriteOrientation.cs" />
+    <Compile Include="Texture\SprProvider.cs" />
+    <Compile Include="Texture\TextureCollection.cs" />
     <Compile Include="Texture\TextureItem.cs" />
     <Compile Include="Texture\TexturePackage.cs" />
+    <Compile Include="Texture\TextureProvider.cs" />
     <Compile Include="Texture\ITextureStreamSource.cs" />
     <Compile Include="Texture\TextureSubItem.cs" />
-    <Compile Include="Texture\Wad\WadTexturePackageProvider.cs" />
-    <Compile Include="Texture\Wad\WadTextureStreamSourceProvider.cs" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\Sledge.Common\Sledge.Common.csproj">
-      <Project>{5D414AC8-8B93-489F-9960-877923400FED}</Project>
-      <Name>Sledge.Common</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\Sledge.DataStructures\Sledge.DataStructures.csproj">
-      <Project>{26A974C9-E495-4FA3-8E87-1E00019D04F5}</Project>
-      <Name>Sledge.DataStructures</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\Sledge.FileSystem\Sledge.FileSystem.csproj">
-      <Project>{1C2C012D-DBA5-4C7F-994F-E3034AC60DCC}</Project>
-      <Name>Sledge.FileSystem</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\Sledge.Packages\Sledge.Packages.csproj">
-      <Project>{BB1AF818-8CCA-4BC8-A4A8-B7A0627B68DD}</Project>
-      <Name>Sledge.Packages</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\Sledge.Rendering\Sledge.Rendering.csproj">
-      <Project>{4da7f88d-64ff-4036-8a11-6175169da851}</Project>
-      <Name>Sledge.Rendering</Name>
-    </ProjectReference>
+    <Compile Include="Texture\Vtf\VtfImageFormat.cs" />
+    <Compile Include="Texture\Vtf\VtfImageFlag.cs" />
+    <Compile Include="Texture\Vtf\VtfProvider.cs" />
+    <Compile Include="Texture\WadProvider.cs" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="Map\RMF22.txt" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="app.config" />
-    <None Include="OpenTK.dll.config" />
-    <None Include="packages.config" />
+    <ProjectReference Include="..\Sledge.Common\Sledge.Common.csproj">
+      <Project>{5d414ac8-8b93-489f-9960-877923400fed}</Project>
+      <Name>Sledge.Common</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Sledge.DataStructures\Sledge.DataStructures.csproj">
+      <Project>{26a974c9-e495-4fa3-8e87-1e00019d04f5}</Project>
+      <Name>Sledge.DataStructures</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Sledge.FileSystem\Sledge.FileSystem.csproj">
+      <Project>{1c2c012d-dba5-4c7f-994f-e3034ac60dcc}</Project>
+      <Name>Sledge.FileSystem</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Sledge.Graphics\Sledge.Graphics.csproj">
+      <Project>{614d4144-8920-4975-ac67-dbba5cb1eb43}</Project>
+      <Name>Sledge.Graphics</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Sledge.Packages\Sledge.Packages.csproj">
+      <Project>{bb1af818-8cca-4bc8-a4a8-b7a0627b68dd}</Project>
+      <Name>Sledge.Packages</Name>
+    </ProjectReference>
   </ItemGroup>
-  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

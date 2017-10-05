@@ -1,6 +1,8 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using Sledge.DataStructures.MapObjects;
 using Sledge.Editor.Actions.MapObjects.Operations.EditOperations;
+using Sledge.Editor.Documents;
 
 namespace Sledge.Editor.Actions.MapObjects.Operations
 {

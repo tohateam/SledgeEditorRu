@@ -7,10 +7,8 @@ using System.Reflection;
 using Sledge.Providers;
 using Sledge.Settings.Models;
 
-namespace Sledge.Settings
-{
-    public static class SettingsManager
-    {
+namespace Sledge.Settings {
+    public static class SettingsManager {
         public static List<Build> Builds { get; set; }
         public static List<Game> Games { get; set; }
         public static List<RecentFile> RecentFiles { get; set; }
@@ -20,9 +18,9 @@ namespace Sledge.Settings
         public static List<FavouriteTextureFolder> FavouriteTextureFolders { get; set; }
 
         public static string SettingsFile { get; set; }
+        public static string MapsFile { get; set; }
 
-        static SettingsManager()
-        {
+        static SettingsManager() {
             Builds = new List<Build>();
             Games = new List<Game>();
             RecentFiles = new List<RecentFile>();
@@ -42,28 +40,34 @@ namespace Sledge.Settings
             AdditionalSettings = new Dictionary<string, GenericStructure>();
             FavouriteTextureFolders = new List<FavouriteTextureFolder>();
 
-            var appdata = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-            var sledge = Path.Combine(appdata, "Sledge");
-            if (!Directory.Exists(sledge)) Directory.CreateDirectory(sledge);
-            SettingsFile = Path.Combine(sledge, "Settings.vdf");
+            // Папка программы
+            var appPath = Directory.GetCurrentDirectory();
+            //Папка данных программы
+            var sledgeSettings = Path.Combine(appPath, "Data");
+            if (!Directory.Exists(sledgeSettings)) Directory.CreateDirectory(sledgeSettings);
+            //Файл настроек
+            SettingsFile = Path.Combine(sledgeSettings, "Settings.vdf");
+            //Папка карт
+            MapsFile = Path.Combine(appPath, "Maps");
+            if (!Directory.Exists(MapsFile)) Directory.CreateDirectory(MapsFile);
+            //Временная папка для хранения автосохранений карт
+            var tempDir = Path.Combine(sledgeSettings, "Temp");
+            if (!Directory.Exists(MapsFile)) Directory.CreateDirectory(tempDir);
         }
 
-        public static string GetTextureCachePath()
-        {
-            var appdata = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-            var sledge = Path.Combine(appdata, "Sledge");
-            if (!Directory.Exists(sledge)) Directory.CreateDirectory(sledge);
-            var cache = Path.Combine(sledge, "TextureCache");
+        public static string GetTextureCachePath() {
+            //Папка кеша текстур
+            var appPath = Directory.GetCurrentDirectory();
+            var sledgeSettings = Path.Combine(appPath, "Data");
+            var cache = Path.Combine(sledgeSettings, "TextureCache");
             if (!Directory.Exists(cache)) Directory.CreateDirectory(cache);
             return cache;
         }
-        
-        public static float GetSpecialTextureOpacity(string name)
-        {
+
+        public static float GetSpecialTextureOpacity(string name) {
             name = name.ToLowerInvariant();
             var val = SpecialTextureOpacities.ContainsKey(name) ? SpecialTextureOpacities[name] : 1;
-            if (View.DisableToolTextureTransparency || View.GloballyDisableTransparency)
-            {
+            if (View.DisableToolTextureTransparency || View.GloballyDisableTransparency) {
                 return val < 0.1 ? 0 : 1;
             }
             return val;
@@ -71,8 +75,7 @@ namespace Sledge.Settings
 
         private static readonly IDictionary<string, float> SpecialTextureOpacities;
 
-        private static GenericStructure ReadSettingsFile()
-        {
+        private static GenericStructure ReadSettingsFile() {
             if (File.Exists(SettingsFile)) return GenericStructure.Parse(SettingsFile).FirstOrDefault();
 
             var exec = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
@@ -82,8 +85,7 @@ namespace Sledge.Settings
             return null;
         }
 
-        public static void Read()
-        {
+        public static void Read() {
             Builds.Clear();
             Games.Clear();
             RecentFiles.Clear();
@@ -96,90 +98,76 @@ namespace Sledge.Settings
 
             if (root == null) return;
 
-            var settings = root.Children.FirstOrDefault(x => x.Name == "Settings");
-            if (settings != null)
-            {
-                foreach (var key in settings.GetPropertyKeys())
-                {
-                    Settings.Add(new Setting {Key = key, Value = settings[key]});
+            // Проверяем разделы файла настроек
+            var settings = root.Children.Find(x => x.Name == "Settings");
+            if (settings != null) {
+                foreach (var key in settings.GetPropertyKeys()) {
+                    Settings.Add(new Setting { Key = key, Value = settings[key] });
                 }
             }
-            var recents = root.Children.FirstOrDefault(x => x.Name == "RecentFiles");
-            if (recents != null)
-            {
-                foreach (var key in recents.GetPropertyKeys())
-                {
-                    int i;
-                    if (int.TryParse(key, out i))
+            // История файлов
+            var recents = root.Children.Find(x => x.Name == "RecentFiles");
+            if (recents != null) {
+                foreach (var key in recents.GetPropertyKeys()) {
+                    if (int.TryParse(key, out int i))
                     {
-                        RecentFiles.Add(new RecentFile {Location = recents[key], Order = i});
+                        RecentFiles.Add(new RecentFile { Location = recents[key], Order = i });
                     }
                 }
             }
+            // Настройки игры
             var games = root.Children.Where(x => x.Name == "Game");
-            foreach (var game in games)
-            {
+            foreach (var game in games) {
                 var g = new Game();
                 g.Read(game);
                 Games.Add(g);
             }
+            // Компиляция карт
             var builds = root.Children.Where(x => x.Name == "Build");
-            foreach (var build in builds)
-            {
+            foreach (var build in builds) {
                 var b = new Build();
                 b.Read(build);
                 Builds.Add(b);
             }
-            var hotkeys = root.Children.FirstOrDefault(x => x.Name == "Hotkeys");
-            if (hotkeys != null)
-            {
-                foreach (var key in hotkeys.GetPropertyKeys())
-                {
+            // Горячие клавиши
+            var hotkeys = root.Children.Find(x => x.Name == "Hotkeys");
+            if (hotkeys != null) {
+                foreach (var key in hotkeys.GetPropertyKeys()) {
                     var spl = key.Split(':');
-                    Hotkeys.Add(new Hotkey {ID = spl[0], HotkeyString = hotkeys[key]});
+                    Hotkeys.Add(new Hotkey { ID = spl[0], HotkeyString = hotkeys[key] });
                 }
             }
 
             Serialise.DeserialiseSettings(Settings.ToDictionary(x => x.Key, x => x.Value));
             Sledge.Settings.Hotkeys.SetupHotkeys(Hotkeys);
-
-            var additionalSettings = root.Children.FirstOrDefault(x => x.Name == "AdditionalSettings");
-            if (additionalSettings != null)
-            {
-                foreach (var child in additionalSettings.Children)
-                {
+            // Дополнительные настройки
+            var additionalSettings = root.Children.Find(x => x.Name == "AdditionalSettings");
+            if (additionalSettings != null) {
+                foreach (var child in additionalSettings.Children) {
                     if (child.Children.Count > 0) AdditionalSettings.Add(child.Name, child.Children[0]);
                 }
             }
-
-            var favTextures = root.Children.FirstOrDefault(x => x.Name == "FavouriteTextures");
-            if (favTextures != null && favTextures.Children.Any())
-            {
-                try
-                {
+            // Избранные текстуры
+            var favTextures = root.Children.Find(x => x.Name == "FavouriteTextures");
+            if (favTextures?.Children.Count > 0) {
+                try {
                     var ft = GenericStructure.Deserialise<List<FavouriteTextureFolder>>(favTextures.Children[0]);
                     if (ft != null) FavouriteTextureFolders.AddRange(ft);
                     FixFavouriteNames(FavouriteTextureFolders);
-                }
-                catch
-                {
+                } catch {
                     // Nope
                 }
             }
 
-            if (!File.Exists(SettingsFile))
-            {
+            if (!File.Exists(SettingsFile)) {
                 Write();
             }
         }
 
-        private static void FixFavouriteNames(IEnumerable<FavouriteTextureFolder> folders)
-        {
-            foreach (var f in folders)
-            {
+        private static void FixFavouriteNames(IEnumerable<FavouriteTextureFolder> folders) {
+            foreach (var f in folders) {
                 FixFavouriteNames(f.Children);
-                f.Items = f.Items.Select(x =>
-                {
+                f.Items = f.Items.Select(x => {
                     var i = x.IndexOf(':');
                     if (i >= 0) x = x.Substring(i + 1);
                     return x;
@@ -187,8 +175,7 @@ namespace Sledge.Settings
             }
         }
 
-        public static void Write()
-        {
+        public static void Write() {
             var newSettings = Serialise.SerialiseSettings().Select(s => new Setting { Key = s.Key, Value = s.Value });
             Settings.Clear();
             Settings.AddRange(newSettings);
@@ -197,8 +184,7 @@ namespace Sledge.Settings
 
             // Settings
             var settings = new GenericStructure("Settings");
-            foreach (var setting in Settings)
-            {
+            foreach (var setting in Settings) {
                 settings.AddProperty(setting.Key, setting.Value);
             }
             root.Children.Add(settings);
@@ -206,24 +192,21 @@ namespace Sledge.Settings
             // Recent Files
             var recents = new GenericStructure("RecentFiles");
             var i = 1;
-            foreach (var file in RecentFiles.OrderBy(x => x.Order).Select(x => x.Location).Where(File.Exists))
-            {
+            foreach (var file in RecentFiles.OrderBy(x => x.Order).Select(x => x.Location).Where(File.Exists)) {
                 recents.AddProperty(i.ToString(CultureInfo.InvariantCulture), file);
                 i++;
             }
             root.Children.Add(recents);
 
             // Games > Fgds/Wads
-            foreach (var game in Games)
-            {
+            foreach (var game in Games) {
                 var g = new GenericStructure("Game");
                 game.Write(g);
                 root.Children.Add(g);
             }
 
             // Builds
-            foreach (var build in Builds)
-            {
+            foreach (var build in Builds) {
                 var b = new GenericStructure("Build");
                 build.Write(b);
                 root.Children.Add(b);
@@ -232,11 +215,9 @@ namespace Sledge.Settings
             // Hotkeys
             Hotkeys = Sledge.Settings.Hotkeys.GetHotkeys().ToList();
             var hotkeys = new GenericStructure("Hotkeys");
-            foreach (var g in Hotkeys.GroupBy(x => x.ID))
-            {
+            foreach (var g in Hotkeys.GroupBy(x => x.ID)) {
                 var count = 0;
-                foreach (var hotkey in g)
-                {
+                foreach (var hotkey in g) {
                     hotkeys.AddProperty(hotkey.ID + ":" + count, hotkey.HotkeyString);
                     count++;
                 }
@@ -245,8 +226,7 @@ namespace Sledge.Settings
 
             // Additional
             var additional = new GenericStructure("AdditionalSettings");
-            foreach (var kv in AdditionalSettings)
-            {
+            foreach (var kv in AdditionalSettings) {
                 var child = new GenericStructure(kv.Key);
                 child.Children.Add(kv.Value);
                 additional.Children.Add(child);
@@ -261,52 +241,42 @@ namespace Sledge.Settings
             File.WriteAllText(SettingsFile, root.ToString());
         }
 
-        private static string GetSessionFile()
-        {
-            var appdata = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-            var sledge = Path.Combine(appdata, "Sledge");
-            if (!Directory.Exists(sledge)) Directory.CreateDirectory(sledge);
-            return Path.Combine(sledge, "session");
+        private static string GetSessionFile() {
+            //Список последних файлов
+            var appPath = Directory.GetCurrentDirectory();
+            var sledgeSettings = Path.Combine(appPath, "Data");
+            return Path.Combine(sledgeSettings, "session");
         }
 
-        public static void SaveSession(IEnumerable<Tuple<string, Game>> files)
-        {
+        public static void SaveSession(IEnumerable<Tuple<string, Game>> files) {
             File.WriteAllLines(GetSessionFile(), files.Select(x => x.Item1 + ":" + x.Item2.ID));
         }
 
-        public static IEnumerable<Tuple<string, Game>> LoadSession()
-        {
+        public static IEnumerable<Tuple<string, Game>> LoadSession() {
             var sf = GetSessionFile();
             if (!File.Exists(sf)) return new List<Tuple<string, Game>>();
             return File.ReadAllLines(sf)
-                .Select(x =>
-                            {
-                                var i = x.LastIndexOf(":", StringComparison.Ordinal);
-                                var file = x.Substring(0, i);
-                                var num = x.Substring(i + 1);
-                                int id;
-                                int.TryParse(num, out id);
-                                return Tuple.Create(file, Games.FirstOrDefault(g => g.ID == id));
-                            })
+                .Select(x => {
+                    var i = x.LastIndexOf(":", StringComparison.Ordinal);
+                    var file = x.Substring(0, i);
+                    var num = x.Substring(i + 1);
+                    int.TryParse(num, out int id);
+                    return Tuple.Create(file, Games.Find(g => g.ID == id));
+                })
                 .Where(x => File.Exists(x.Item1) && x.Item2 != null);
         }
 
-        public static T GetAdditionalData<T>(string key)
-        {
+        public static T GetAdditionalData<T>(string key) {
             if (!AdditionalSettings.ContainsKey(key)) return default(T);
             var additional = AdditionalSettings[key];
-            try
-            {
+            try {
                 return GenericStructure.Deserialise<T>(additional);
-            }
-            catch
-            {
+            } catch {
                 return default(T); // Deserialisation failure
             }
         }
 
-        public static void SetAdditionalData<T>(string key, T obj)
-        {
+        public static void SetAdditionalData<T>(string key, T obj) {
             if (AdditionalSettings.ContainsKey(key)) AdditionalSettings.Remove(key);
             AdditionalSettings.Add(key, GenericStructure.Serialise(obj));
         }

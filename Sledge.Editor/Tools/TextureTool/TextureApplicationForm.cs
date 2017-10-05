@@ -8,7 +8,6 @@ using Sledge.DataStructures.MapObjects;
 using Sledge.Editor.Documents;
 using Sledge.Editor.UI;
 using Sledge.Providers.Texture;
-using Sledge.Rendering.Materials;
 using Sledge.Settings;
 using Sledge.Settings.Models;
 
@@ -16,7 +15,7 @@ namespace Sledge.Editor.Tools.TextureTool
 {
     public partial class TextureApplicationForm : HotkeyForm
     {
-        public class CurrentTextureProperties : TextureInfo
+        public class CurrentTextureProperties : TextureReference
         {
             public bool DifferentXScaleValues { get; set; }
             public bool DifferentYScaleValues { get; set; }
@@ -98,10 +97,10 @@ namespace Sledge.Editor.Tools.TextureTool
 
         public delegate void TextureSelectBehaviourChangedEventHandler(object sender, TextureTool.SelectBehaviour left, TextureTool.SelectBehaviour right);
         public delegate void TexturePropertiesChangedEventHandler(object sender, CurrentTextureProperties properties);
-        public delegate void TextureChangedEventHandler(object sender, string texture);
+        public delegate void TextureChangedEventHandler(object sender, TextureItem texture);
         public delegate void TextureHideMaskToggledEventHandler(object sender, bool hide);
         public delegate void TextureJustifyEventHandler(object sender, TextureTool.JustifyMode justify, bool treatAsOne);
-        public delegate void TextureApplyEventHandler(object sender, string texture);
+        public delegate void TextureApplyEventHandler(object sender, TextureItem texture);
         public delegate void TextureAlignEventHandler(object sender, TextureTool.AlignMode align);
 
         public event TexturePropertiesChangedEventHandler PropertyChanged;
@@ -120,7 +119,7 @@ namespace Sledge.Editor.Tools.TextureTool
             }
         }
 
-        protected virtual void OnTextureApply(string texture)
+        protected virtual void OnTextureApply(TextureItem texture)
         {
             if (TextureApply != null)
             {
@@ -160,7 +159,7 @@ namespace Sledge.Editor.Tools.TextureTool
             }
         }
 
-        protected virtual void OnTextureChanged(string texture)
+        protected virtual void OnTextureChanged(TextureItem texture)
         {
             if (TextureChanged != null)
             {
@@ -174,7 +173,7 @@ namespace Sledge.Editor.Tools.TextureTool
 
         private readonly CurrentTextureProperties _currentTextureProperties;
         private Document _document;
-        public TextureInfo CurrentProperties { get { return _currentTextureProperties; } }
+        public TextureReference CurrentProperties { get { return _currentTextureProperties; } }
 
         public Documents.Document Document
         {
@@ -204,7 +203,7 @@ namespace Sledge.Editor.Tools.TextureTool
             _currentTextureProperties.Reset();
         }
 
-        public string GetFirstSelectedTexture()
+        public TextureItem GetFirstSelectedTexture()
         {
             return RecentTexturesList
                 .GetSelectedTextures()
@@ -212,14 +211,14 @@ namespace Sledge.Editor.Tools.TextureTool
                 .FirstOrDefault();
         }
 
-        public IEnumerable<string> GetSelectedTextures()
+        public IEnumerable<TextureItem> GetSelectedTextures()
         {
             return RecentTexturesList
                 .GetSelectedTextures()
                 .Union(SelectedTexturesList.GetSelectedTextures());
         }
 
-        private void TextureSelectionChanged(object sender, IEnumerable<string> selection)
+        private void TextureSelectionChanged(object sender, IEnumerable<TextureItem> selection)
         {
             if (_freeze) return;
 
@@ -227,8 +226,8 @@ namespace Sledge.Editor.Tools.TextureTool
             var item = selection.FirstOrDefault();
             if (selection.Any())
             {
-                if (sender == SelectedTexturesList) RecentTexturesList.SetSelectedTextures(new string[0]);
-                if (sender == RecentTexturesList) SelectedTexturesList.SetSelectedTextures(new string[0]);
+                if (sender == SelectedTexturesList) RecentTexturesList.SetSelectedTextures(new TextureItem[0]);
+                if (sender == RecentTexturesList) SelectedTexturesList.SetSelectedTextures(new TextureItem[0]);
             }
             else
             {
@@ -240,7 +239,7 @@ namespace Sledge.Editor.Tools.TextureTool
             TextureDetailsLabel.Text = "";
             if (item != null)
             {
-                //todo TextureDetailsLabel.Text = string.Format("{0} ({1} x {2})", item.Name, item.Width, item.Height);
+                TextureDetailsLabel.Text = string.Format("{0} ({1} x {2})", item.Name, item.Width, item.Height);
                 OnTextureChanged(item);
             }
             _freeze = false;
@@ -248,16 +247,16 @@ namespace Sledge.Editor.Tools.TextureTool
 
         private void UpdateRecentTextureList()
         {
-            RecentTexturesList.SetTextureList(Document.TextureCollection.GetRecentTextures().Where(x => x.ToLower().Contains(RecentFilterTextbox.Text.ToLower())));
+            RecentTexturesList.SetTextureList(Document.TextureCollection.GetRecentTextures().Where(x => x.Name.ToLower().Contains(RecentFilterTextbox.Text.ToLower())));
         }
 
-        public void SelectTexture(string item)
+        public void SelectTexture(TextureItem item)
         {
             if (_freeze) return;
 
             if (item == null)
             {
-                SelectedTexturesList.SetSelectedTextures(new string[0]);
+                SelectedTexturesList.SetSelectedTextures(new TextureItem[0]);
                 return;
             }
 
@@ -265,7 +264,7 @@ namespace Sledge.Editor.Tools.TextureTool
 
             // If the texture is in the list of selected faces, select the texture in that list
             var sl = SelectedTexturesList.GetTextures();
-            if (sl.Any(x => String.Equals(x, item, StringComparison.InvariantCultureIgnoreCase)))
+            if (sl.Any(x => String.Equals(x.Name, item.Name, StringComparison.InvariantCultureIgnoreCase)))
             {
                 SelectedTexturesList.SetSelectedTextures(new[] { item });
                 SelectedTexturesList.ScrollToItem(item);
@@ -353,28 +352,29 @@ namespace Sledge.Editor.Tools.TextureTool
             else AlignToWorldCheckbox.CheckState = CheckState.Indeterminate;
 
             TextureDetailsLabel.Text = "";
-            var textures = new List<string>();
+            var textures = new List<TextureItem>();
 
             foreach (var face in faces)
             {
                 var tex = face.Texture;
 
-                var name = tex.Name;
-                if (textures.Any(x => String.Equals(x, name, StringComparison.InvariantCultureIgnoreCase))) continue;
-                
-                textures.Add(name);
+                var name = tex.Texture == null ? tex.Name : tex.Texture.Name;
+                if (textures.Any(x => String.Equals(x.Name, name, StringComparison.InvariantCultureIgnoreCase))) continue;
+
+                var item = Document.TextureCollection.GetItem(name) ?? new TextureItem(null, name, TextureFlags.Missing, 64, 64);
+                textures.Add(item);
             }
 
             if (textures.Any())
             {
                 var t = textures[0];
-                //var format = t.Flags.HasFlag(TextureFlags.Missing) ? "{0}" : "{0} ({1}x{2})";
-                // todo TextureDetailsLabel.Text = string.Format(format, t.Name, t.Width, t.Height);
+                var format = t.Flags.HasFlag(TextureFlags.Missing) ? "{0}" : "{0} ({1}x{2})";
+                TextureDetailsLabel.Text = string.Format(format, t.Name, t.Width, t.Height);
             }
 
             SelectedTexturesList.SetTextureList(textures);
             SelectedTexturesList.SetSelectedTextures(textures);
-            RecentTexturesList.SetSelectedTextures(new string[0]);
+            RecentTexturesList.SetSelectedTextures(new TextureItem[0]);
             HideMaskCheckbox.Checked = Document.Map.HideFaceMask;
             if (LeftClickCombo.SelectedIndex < 0) LeftClickCombo.SelectedIndex = 0;
             if (RightClickCombo.SelectedIndex < 0) RightClickCombo.SelectedIndex = 0;
@@ -502,9 +502,9 @@ namespace Sledge.Editor.Tools.TextureTool
 
         private void BrowseButtonClicked(object sender, EventArgs e)
         {
-            using (var browser = new TextureBrowser(Document))
+            using (var browser = new TextureBrowser())
             {
-                browser.SetTextureList(Document.TextureCollection.Packages.SelectMany(x => x.Textures).Distinct());
+                browser.SetTextureList(Document.TextureCollection.GetAllBrowsableItems());
                 browser.ShowDialog();
 
                 if (browser.SelectedTexture == null) return;
@@ -525,7 +525,7 @@ namespace Sledge.Editor.Tools.TextureTool
             }
         }
 
-        private void TexturesListTextureSelected(object sender, string item)
+        private void TexturesListTextureSelected(object sender, TextureItem item)
         {
             OnTextureApply(item);
         }

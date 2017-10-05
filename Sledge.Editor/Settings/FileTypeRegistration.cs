@@ -98,9 +98,9 @@ namespace Sledge.Editor.Settings
 
         public static void RegisterDefaultFileTypes(IEnumerable<string> extensions)
         {
-            #if DEBUG
-                return;
-            #endif
+            //#if DEBUG
+            //    return;
+            //#endif
 
             foreach (var e in extensions)
             {
@@ -112,9 +112,9 @@ namespace Sledge.Editor.Settings
 
         public static void RegisterFileTypes()
         {
-            #if DEBUG
-                return;
-            #endif
+            //#if DEBUG
+            //    return;
+            //#endif
 
             try
             {

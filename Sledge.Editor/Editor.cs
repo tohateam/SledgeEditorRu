@@ -1,13 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Drawing;
 using System.Drawing.Imaging;
 using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Reflection;
 using System.Windows.Forms;
-using LogicAndTrick.Gimme;
 using Microsoft.WindowsAPICodePack.Taskbar;
 using Sledge.Common.Mediator;
 using Sledge.DataStructures.Geometric;
@@ -16,20 +17,22 @@ using Sledge.Editor.Brushes;
 using Sledge.Editor.Compiling;
 using Sledge.Editor.Documents;
 using Sledge.Editor.Menu;
-using Sledge.Editor.Rendering;
 using Sledge.Editor.Settings;
 using Sledge.Editor.UI;
 using Sledge.Editor.UI.Sidebar;
+using Sledge.FileSystem;
+using Sledge.Graphics.Helpers;
 using Sledge.Providers;
 using Sledge.Providers.GameData;
 using Sledge.Providers.Map;
 using Sledge.Editor.Tools;
 using Sledge.Providers.Model;
 using Sledge.Providers.Texture;
-using Sledge.Providers.Texture.Wad;
-using Sledge.Rendering.Cameras;
+using Sledge.QuickForms;
 using Sledge.Settings;
 using Sledge.Settings.Models;
+using Sledge.UI;
+using Hotkeys = Sledge.Editor.UI.Hotkeys;
 using LayoutSettings = Sledge.Editor.UI.Layout.LayoutSettings;
 using Path = System.IO.Path;
 
@@ -95,7 +98,7 @@ namespace Sledge.Editor
             if (TaskbarManager.IsPlatformSupported)
             {
                 TaskbarManager.Instance.ApplicationId = FileTypeRegistration.ProgramId;
-                
+
                 _jumpList = JumpList.CreateJumpList();
                 _jumpList.KnownCategoryToDisplay = JumpListKnownCategoryType.Recent;
                 _jumpList.Refresh();
@@ -119,34 +122,40 @@ namespace Sledge.Editor
             {
                 var tl = tool;
                 var hotkey = Sledge.Settings.Hotkeys.GetHotkeyForMessage(HotkeysMediator.SwitchTool, tool.GetHotkeyToolType());
+#pragma warning disable CC0022 // Should dispose object
                 tspTools.Items.Add(new ToolStripButton(
                     "",
                     tl.GetIcon(),
                     (s, ea) => Mediator.Publish(HotkeysMediator.SwitchTool, tl.GetHotkeyToolType()),
                     tl.GetName())
-                        {
-                            Checked = (tl == ToolManager.ActiveTool),
-                            ToolTipText = tl.GetName() + (hotkey != null ? " (" +hotkey.Hotkey + ")" : ""),
-                            DisplayStyle = ToolStripItemDisplayStyle.Image,
-                            ImageScaling = ToolStripItemImageScaling.None,
-                            AutoSize = false,
-                            Width = 36,
-                            Height = 36
-                        }
-                    );
+                {
+                    Checked = (tl == ToolManager.ActiveTool),
+                    ToolTipText = tl.GetName() + (hotkey != null ? " (" + hotkey.Hotkey + ")" : ""),
+                    DisplayStyle = ToolStripItemDisplayStyle.Image,
+                    ImageScaling = ToolStripItemImageScaling.None,
+                    AutoSize = false,
+                    Width = 36,
+                    Height = 36
+                }
+#pragma warning restore CC0022 // Should dispose object
+                );
             }
 
+            TextureProvider.SetCachePath(SettingsManager.GetTextureCachePath());
             MapProvider.Register(new RmfProvider());
             MapProvider.Register(new MapFormatProvider());
             MapProvider.Register(new VmfProvider());
             MapProvider.Register(new ObjProvider());
             GameDataProvider.Register(new FgdProvider());
-
-            Gimme.Register(new WadTexturePackageProvider());
-            Gimme.Register(new WadTextureItemProvider());
-            Gimme.Register(new WadTextureStreamSourceProvider());
-
+            TextureProvider.Register(new WadProvider());
+            TextureProvider.Register(new SprProvider());
+            TextureProvider.Register(new VmtProvider());
             ModelProvider.Register(new MdlProvider());
+
+            WadProvider.ReplaceTransparentPixels = !Sledge.Settings.View.DisableWadTransparency && !Sledge.Settings.View.GloballyDisableTransparency;
+            TextureHelper.EnableTransparency = !Sledge.Settings.View.GloballyDisableTransparency;
+            TextureHelper.DisableTextureFiltering = Sledge.Settings.View.DisableTextureFiltering;
+            TextureHelper.ForceNonPowerOfTwoResize = Sledge.Settings.View.ForcePowerOfTwoTextureResizing;
 
             Subscribe();
 
@@ -167,15 +176,20 @@ namespace Sledge.Editor
 
         private void CheckForUpdates()
         {
-            DoUpdateCheck(true);
+           // DoUpdateCheck(true);
         }
 
         private void DoUpdateCheck(bool notify)
         {
-            #if DEBUG
-                return;
-            #endif
+//#if DEBUG
+//            return;
+//#endif
+            if(notify)
+            {
+                // Show massage
+            }
 
+            /*
             try
             {
                 var version = GetCurrentVersion();
@@ -210,6 +224,7 @@ namespace Sledge.Editor
                     NotifyUpdateError("An error occurred during the update: " + ex.Message, "Update Failed!");
                 }
             }
+            */
         }
 
         private void NotifyUpdateError(string message, string title)
@@ -254,7 +269,7 @@ namespace Sledge.Editor
 
         private String GetCurrentVersion()
         {
-            var info = typeof (Editor).Assembly.GetName().Version;
+            var info = typeof(Editor).Assembly.GetName().Version;
             return info.ToString();
         }
 
@@ -302,7 +317,7 @@ namespace Sledge.Editor
 
         private void EditorClosing(object sender, FormClosingEventArgs e)
         {
-            foreach(var doc in DocumentManager.Documents.ToArray())
+            foreach (var doc in DocumentManager.Documents.ToArray())
             {
                 if (!PromptForChanges(doc))
                 {
@@ -316,7 +331,7 @@ namespace Sledge.Editor
             SettingsManager.Write();
             if (_updateExecutable != null && File.Exists(_updateExecutable))
             {
-                var loc = Path.GetDirectoryName(typeof (Editor).Assembly.Location);
+                var loc = Path.GetDirectoryName(typeof(Editor).Assembly.Location);
                 Process.Start(_updateExecutable, "/S" + (loc != null ? " /D=" + loc : ""));
             }
         }
@@ -342,7 +357,7 @@ namespace Sledge.Editor
                 var files = (drgevent.Data.GetData(DataFormats.FileDrop) as IEnumerable<string> ?? new string[0])
                     .Where(x => supported.Any(f => x.EndsWith(f.Extension, StringComparison.InvariantCultureIgnoreCase)))
                     .ToList();
-                drgevent.Effect = files.Any() ? DragDropEffects.Link : DragDropEffects.None;
+                drgevent.Effect = files.Count > 0 ? DragDropEffects.Link : DragDropEffects.None;
             }
             base.OnDragEnter(drgevent);
         }
@@ -486,11 +501,16 @@ namespace Sledge.Editor
 
         private static void SettingsChanged()
         {
-            foreach (var cam in ViewportManager.Viewports.Select(x => x.Viewport.Camera).OfType<PerspectiveCamera>())
+            foreach (var vp in ViewportManager.Viewports.OfType<Sledge.UI.Viewport3D>())
             {
-                cam.FOV = Sledge.Settings.View.CameraFOV;
-                cam.ClipDistance = Sledge.Settings.View.BackClippingPane;
+                vp.Camera.FOV = Sledge.Settings.View.CameraFOV;
+                vp.Camera.ClipDistance = Sledge.Settings.View.BackClippingPane;
             }
+            ViewportManager.RefreshClearColour();
+            WadProvider.ReplaceTransparentPixels = !Sledge.Settings.View.DisableWadTransparency && !Sledge.Settings.View.GloballyDisableTransparency;
+            TextureHelper.EnableTransparency = !Sledge.Settings.View.GloballyDisableTransparency;
+            TextureHelper.DisableTextureFiltering = Sledge.Settings.View.DisableTextureFiltering;
+            TextureHelper.ForceNonPowerOfTwoResize = Sledge.Settings.View.ForcePowerOfTwoTextureResizing;
         }
 
         private void Exit()
@@ -546,10 +566,12 @@ namespace Sledge.Editor
             UpdateDocumentTabs();
         }
 
+#pragma warning disable RCS1163 // Unused parameter.
         private void CompileStarted(Batch batch)
         {
             if (DockBottom.Hidden && Sledge.Settings.View.CompileOpenOutput) DockBottom.Hidden = false;
         }
+#pragma warning restore RCS1163 // Unused parameter.
 
         private void CompileFinished(Batch batch)
         {
@@ -627,7 +649,7 @@ namespace Sledge.Editor
             _closingDocumentTab = false;
         }
 
-        private void DocumentOpened(Document doc)
+        private void DocumentOpened()
         {
             UpdateDocumentTabs();
         }
@@ -652,7 +674,7 @@ namespace Sledge.Editor
             }
         }
 
-        private void DocumentClosed(Document doc)
+        private void DocumentClosed()
         {
             UpdateDocumentTabs();
         }
@@ -688,7 +710,7 @@ namespace Sledge.Editor
             StatusSelectionLabel.Text = "";
             if (DocumentManager.CurrentDocument == null) return;
 
-            var sel  = DocumentManager.CurrentDocument.Selection.GetSelectedParents().ToList();
+            var sel = DocumentManager.CurrentDocument.Selection.GetSelectedParents().ToList();
             var count = sel.Count;
             if (count == 0)
             {
@@ -788,71 +810,70 @@ namespace Sledge.Editor
             }
             else
             {
-                var focused = ViewportManager.Viewports.FirstOrDefault(x => x.Viewport.IsFocused);
+                var focused = ViewportManager.Viewports.Find(x => x.IsFocused);
                 if (focused != null)
                 {
-                    TableSplitView.FocusOn(focused.Control);
+                    TableSplitView.FocusOn(focused);
                 }
             }
         }
 
-        // todo viewport: redo this
         public void ScreenshotViewport(object parameter)
         {
-            //var focused = (parameter as MapViewport) ?? ViewportManager.Viewports.FirstOrDefault(x => x.IsFocused);
-            //if (focused == null) return;
+            var focused = (parameter as ViewportBase) ?? ViewportManager.Viewports.Find(x => x.IsFocused);
+            if (focused == null) return;
 
-            //var screen = Screen.FromControl(this);
-            //var area = screen.Bounds;
+            var screen = Screen.FromControl(this);
+            var area = screen.Bounds;
 
-            //using (var qf = new QuickForm("Select screenshot size") {UseShortcutKeys = true}
-            //    .NumericUpDown("Width", 640, 5000, 0, area.Width)
-            //    .NumericUpDown("Height", 480, 5000, 0, area.Height)
-            //    .OkCancel())
-            //{
-            //    if (qf.ShowDialog() != DialogResult.OK) return;
+            using (var qf = new QuickForm("Select screenshot size") { UseShortcutKeys = true }
+                .NumericUpDown("Width", 640, 5000, 0, area.Width)
+                .NumericUpDown("Height", 480, 5000, 0, area.Height)
+                .OkCancel())
+            {
+                if (qf.ShowDialog() != DialogResult.OK) return;
 
-            //    var shot = ViewportManager.CreateScreenshot(focused, (int) qf.Decimal("Width"), (int) qf.Decimal("Height"));
-            //    if (shot == null) return;
+                var shot = ViewportManager.CreateScreenshot(focused, (int)qf.Decimal("Width"), (int)qf.Decimal("Height"));
+                if (shot == null) return;
 
-            //    var ext = focused is MapViewport || (focused is MapViewport && ((MapViewport)focused).Type != MapViewport.ViewType.Textured) ? ".png" : ".jpg";
+                var ext = focused is Viewport2D || (focused is Viewport3D && ((Viewport3D)focused).Type != Viewport3D.ViewType.Textured) ? ".png" : ".jpg";
 
-            //    using (var sfd = new SaveFileDialog())
-            //    {
-            //        sfd.FileName = "Sledge - "
-            //                       + (DocumentManager.CurrentDocument != null ? DocumentManager.CurrentDocument.MapFileName : "untitled")
-            //                       + " - " + DateTime.Now.ToString("yyyy-MM-ddThh-mm-ss") + ext;
-            //        sfd.Filter = "Image Files (*.png, *.jpg, *.bmp)|*.png;*.jpg;*.bmp";
-            //        if (sfd.ShowDialog() == DialogResult.OK)
-            //        {
-            //            if (sfd.FileName.EndsWith("jpg"))
-            //            {
-            //                var encoder = GetJpegEncoder();
-            //                if (encoder != null)
-            //                {
-            //                    var p = new EncoderParameter(Encoder.Quality, 90L);
-            //                    var ep = new EncoderParameters(1);
-            //                    ep.Param[0] = p;
-            //                    shot.Save(sfd.FileName, encoder, ep);
-            //                }
-            //                else
-            //                {
-            //                    shot.Save(sfd.FileName);
-            //                }
-            //            }
-            //            else
-            //            {
-            //                shot.Save(sfd.FileName);
-            //            }
-            //        }
-            //    }
-            //    shot.Dispose();
-            //}
+                using (var sfd = new SaveFileDialog())
+                {
+                    sfd.FileName = "Sledge - "
+                                   + (DocumentManager.CurrentDocument != null ? DocumentManager.CurrentDocument.MapFileName : "untitled")
+                                   + " - " + DateTime.Now.ToString("yyyy-MM-ddThh-mm-ss") + ext;
+                    sfd.Filter = "Image Files (*.png, *.jpg, *.bmp)|*.png;*.jpg;*.bmp";
+                    if (sfd.ShowDialog() == DialogResult.OK)
+                    {
+                        if (sfd.FileName.EndsWith("jpg"))
+                        {
+                            var encoder = GetJpegEncoder();
+                            if (encoder != null)
+                            {
+                                var p = new EncoderParameter(Encoder.Quality, 90L);
+                                var ep = new EncoderParameters(1);
+                                ep.Param[0] = p;
+                                shot.Save(sfd.FileName, encoder, ep);
+                            }
+                            else
+                            {
+                                shot.Save(sfd.FileName);
+                            }
+                        }
+                        else
+                        {
+                            shot.Save(sfd.FileName);
+                        }
+                    }
+                }
+                shot.Dispose();
+            }
         }
 
         private ImageCodecInfo GetJpegEncoder()
         {
-            return ImageCodecInfo.GetImageEncoders().FirstOrDefault(x => x.FormatID == ImageFormat.Jpeg.Guid);
+            return Array.Find(ImageCodecInfo.GetImageEncoders(), x => x.FormatID == ImageFormat.Jpeg.Guid);
         }
 
         protected override bool ProcessDialogKey(Keys keyData)
@@ -882,7 +903,7 @@ namespace Sledge.Editor
                 _jumpList.Refresh();
             }
             var recents = SettingsManager.RecentFiles.OrderBy(x => x.Order).Where(x => x.Location != path).Take(9).ToList();
-            recents.Insert(0, new RecentFile { Location = path});
+            recents.Insert(0, new RecentFile { Location = path });
             for (var i = 0; i < recents.Count; i++)
             {
                 recents[i].Order = i;

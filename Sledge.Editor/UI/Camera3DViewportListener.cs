@@ -2,22 +2,21 @@
 using System.Collections.Generic;
 using System.Drawing;
 using System.Windows.Forms;
-using OpenTK;
 using Sledge.Common.Easings;
 using Sledge.Common.Mediator;
-using Sledge.Editor.Documents;
-using Sledge.Editor.Rendering;
-using Sledge.Rendering;
-using Sledge.Rendering.Cameras;
+using Sledge.Graphics;
 using Sledge.Settings;
+using Sledge.UI;
+using OpenTK.Graphics.OpenGL;
 using Sledge.Editor.Tools;
-using Sledge.Rendering.Scenes.Elements;
+using Sledge.Graphics.Helpers;
+using KeyboardState = Sledge.UI.KeyboardState;
 
 namespace Sledge.Editor.UI
 {
     public class Camera3DViewportListener : IViewportEventListener, IMediatorListener
     {
-        public MapViewport Viewport { get; set; }
+        public ViewportBase Viewport { get; set; }
 
         private int LastKnownX { get; set; }
         private int LastKnownY { get; set; }
@@ -27,12 +26,12 @@ namespace Sledge.Editor.UI
         private bool CursorVisible { get; set; }
         private Rectangle CursorClip { get; set; }
         private bool Focus { get; set; }
-        private PerspectiveCamera Camera { get { return Viewport.Viewport.Camera as PerspectiveCamera; }}
+        private Camera Camera { get; set; }
         private long _downMillis;
         private long _lastMillis;
         private Easing _easing;
 
-        public Camera3DViewportListener(MapViewport vp)
+        public Camera3DViewportListener(Viewport3D vp)
         {
             LastKnownX = 0;
             LastKnownY = 0;
@@ -42,6 +41,7 @@ namespace Sledge.Editor.UI
             CursorVisible = true;
             Focus = false;
             Viewport = vp;
+            Camera = vp.Camera;
             _downKeys = new List<Keys>();
             _downMillis = _lastMillis = 0;
             _easing = Easing.FromType(EasingType.Sinusoidal, EasingDirection.Out);
@@ -59,13 +59,13 @@ namespace Sledge.Editor.UI
 
         private readonly List<Keys> _downKeys;
 
-        public void UpdateFrame(Frame frame)
+        public void UpdateFrame(FrameInfo frame)
         {
             var currMillis = _lastMillis;
             _lastMillis = frame.Milliseconds;
 
             if (currMillis == 0) return;
-            if (!Focus || !Viewport.IsUnlocked(this) || !Viewport.Viewport.IsFocused)
+            if (!Focus || !Viewport.IsUnlocked(this) || !Viewport.IsFocused)
             {
                 if (FreeLook || FreeLookToggle)
                 {
@@ -75,7 +75,7 @@ namespace Sledge.Editor.UI
                 return;
             }
 
-            var seconds = (frame.Milliseconds - currMillis) / 1000f;
+            var seconds = (frame.Milliseconds - currMillis) / 1000m;
             var units = Sledge.Settings.View.ForwardSpeed * seconds;
 
             var down = KeyboardState.IsAnyKeyDown(Keys.W, Keys.A, Keys.S, Keys.D);
@@ -85,11 +85,11 @@ namespace Sledge.Editor.UI
             if (Sledge.Settings.View.TimeToTopSpeed > 0)
             {
                 var downFor = (frame.Milliseconds - _downMillis) / Sledge.Settings.View.TimeToTopSpeed;
-                if (downFor >= 0 && downFor < 1) units *= (float) _easing.Evaluate(downFor);
+                if (downFor >= 0 && downFor < 1) units *= _easing.Evaluate(downFor);
             }
 
             var move = units;
-            var tilt = 2f;
+            var tilt = 2m;
 
             // These keys are used for hotkeys, don't want the 3D view to move about when trying to use hotkeys.
             var ignore = KeyboardState.IsAnyKeyDown(Keys.ShiftKey, Keys.ControlKey, Keys.Alt);
@@ -127,9 +127,37 @@ namespace Sledge.Editor.UI
             }
         }
 
-        public bool IsActive()
+        public void PreRender()
         {
-            return Viewport != null && Viewport.Is3D;
+            //
+        }
+
+        public void Render3D()
+        {
+            //
+        }
+
+        public void Render2D()
+        {
+            if (!Focus || !FreeLook) return;
+
+            TextureHelper.Unbind();
+            GL.Begin(PrimitiveType.Lines);
+            GL.Color3(Color.White);
+            GL.Vertex2(0, -5);
+            GL.Vertex2(0, 5);
+            GL.Vertex2(1, -5);
+            GL.Vertex2(1, 5);
+            GL.Vertex2(-5, 0);
+            GL.Vertex2(5, 0);
+            GL.Vertex2(-5, 1);
+            GL.Vertex2(5, 1);
+            GL.End();
+        }
+
+        public void PostRender()
+        {
+            // Not used
         }
 
         public void KeyUp(ViewportEvent e)
@@ -185,22 +213,20 @@ namespace Sledge.Editor.UI
             if (FreeLook && CursorVisible)
             {
                 CursorClip = Cursor.Clip;
-                Cursor.Clip = Viewport.Control.RectangleToScreen(new Rectangle(0, 0, Viewport.Width, Viewport.Height));
-                Viewport.Control.Capture = true;
+                Cursor.Clip = Viewport.RectangleToScreen(new Rectangle(0, 0, Viewport.Width, Viewport.Height));
+                Viewport.Capture = true;
                 CursorVisible = false;
                 Cursor.Hide();
                 Viewport.AquireInputLock(this);
-                AddSceneObjects();
             }
             else if (!FreeLook && !CursorVisible)
             {
                 Cursor.Clip = CursorClip;
                 CursorClip = Rectangle.Empty;
-                Viewport.Control.Capture = false;
+                Viewport.Capture = false;
                 CursorVisible = true;
                 Cursor.Show();
                 Viewport.ReleaseInputLock(this);
-                ClearSceneObjects();
             }
         }
 
@@ -255,21 +281,21 @@ namespace Sledge.Editor.UI
             else // left mouse or z-toggle
             {
                 // Camera
-                var fovdiv = (Viewport.Width / 60f) / 2.5f;
+                var fovdiv = (Viewport.Width / 60m) / 2.5m;
                 Camera.Pan(dx / fovdiv);
                 Camera.Tilt(dy / fovdiv);
             }
 
             LastKnownX = Viewport.Width/2;
             LastKnownY = Viewport.Height/2;
-            Cursor.Position = Viewport.Control.PointToScreen(new Point(LastKnownX, LastKnownY));
+            Cursor.Position = Viewport.PointToScreen(new Point(LastKnownX, LastKnownY));
         }
 
         public void MouseWheel(ViewportEvent e)
         {
             if (!Viewport.IsUnlocked(this) || e.Delta == 0) return;
             if (!Focus || (ToolManager.ActiveTool != null && ToolManager.ActiveTool.IsCapturingMouseWheel())) return;
-            Camera.Advance((e.Delta / Math.Abs(e.Delta)) * (float) Sledge.Settings.View.MouseWheelMoveDistance);
+            Camera.Advance((e.Delta / Math.Abs(e.Delta)) * Sledge.Settings.View.MouseWheelMoveDistance);
         }
 
         public void MouseUp(ViewportEvent e)
@@ -292,21 +318,6 @@ namespace Sledge.Editor.UI
             
         }
 
-        public void DragStart(ViewportEvent e)
-        {
-            
-        }
-
-        public void DragMove(ViewportEvent e)
-        {
-
-        }
-
-        public void DragEnd(ViewportEvent e)
-        {
-
-        }
-
         public void MouseEnter(ViewportEvent e)
         {
             Focus = true;
@@ -318,7 +329,7 @@ namespace Sledge.Editor.UI
             {
                 LastKnownX = Viewport.Width/2;
                 LastKnownY = Viewport.Height/2;
-                Cursor.Position = Viewport.Control.PointToScreen(new Point(LastKnownX, LastKnownY));
+                Cursor.Position = Viewport.PointToScreen(new Point(LastKnownX, LastKnownY));
 
             }
             else
@@ -327,64 +338,19 @@ namespace Sledge.Editor.UI
                 {
                     Cursor.Clip = CursorClip;
                     CursorClip = Rectangle.Empty;
-                    Viewport.Control.Capture = false;
+                    Viewport.Capture = false;
                     CursorVisible = true;
                     Cursor.Show();
                     Viewport.ReleaseInputLock(this);
-                    ClearSceneObjects();
                 }
                 PositionKnown = false;
                 Focus = false;
             }
         }
 
-        public void ZoomChanged(ViewportEvent e)
-        {
-
-        }
-
-        public void PositionChanged(ViewportEvent e)
-        {
-
-        }
-
         public void Notify(string message, object data)
         {
             Mediator.ExecuteDefault(this, message, data);
-        }
-
-        private void ClearSceneObjects()
-        {
-            if (DocumentManager.CurrentDocument == null) return;
-            DocumentManager.CurrentDocument.SceneManager.ClearTemporaryObjects(this);
-        }
-
-        private void AddSceneObjects()
-        {
-            if (DocumentManager.CurrentDocument == null) return;
-
-            var line1 = new LineElement(PositionType.Screen, Color.White, new List<Position>
-            {
-                new Position(new Vector3(0.5f, 0.5f, 0)) { Normalised = true, Offset = new Vector3(-5, 0, 0) },
-                new Position(new Vector3(0.5f, 0.5f, 0)) { Normalised = true, Offset = new Vector3(+5, 0, 0) },
-            })
-            {
-                Viewport = Viewport.Viewport,
-                Smooth = false
-            };
-
-            var line2 = new LineElement(PositionType.Screen, Color.White, new List<Position>
-            {
-                new Position(new Vector3(0.5f, 0.5f, 0)) { Normalised = true, Offset = new Vector3(0, -5, 0) },
-                new Position(new Vector3(0.5f, 0.5f, 0)) { Normalised = true, Offset = new Vector3(0, +5, 0) },
-            })
-            {
-                Viewport = Viewport.Viewport,
-                Smooth = false
-            };
-
-            DocumentManager.CurrentDocument.SceneManager.AddTemporaryObject(this, line1);
-            DocumentManager.CurrentDocument.SceneManager.AddTemporaryObject(this, line2);
         }
     }
 }

@@ -46,6 +46,7 @@ namespace Sledge.DataStructures.MapObjects
                 f.Parent = e;
                 e.Faces.Add(f);
                 f.UpdateBoundingBox();
+                f.CalculateTextureCoordinates(true);
             }
             CopyBase(e, generator);
             return e;
@@ -187,6 +188,7 @@ namespace Sledge.DataStructures.MapObjects
                     break;
                 }
             }
+            front.Faces.Union(back.Faces).ToList().ForEach(x => x.CalculateTextureCoordinates(true));
 
             return true;
         }
@@ -205,7 +207,7 @@ namespace Sledge.DataStructures.MapObjects
                 }
 
                 // The final polygon is the face
-                var face = new Face(generator.GetNextFaceID()) { Plane = poly.GetPlane() , Parent = solid };
+                var face = new Face(generator.GetNextFaceID()) { Plane = poly.Plane , Parent = solid };
                 face.Vertices.AddRange(poly.Vertices.Select(x => new Vertex(x.Round(2), face))); // Round vertices a bit for sanity
                 face.UpdateBoundingBox();
                 face.AlignTextureToWorld();

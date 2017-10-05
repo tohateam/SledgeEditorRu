@@ -1,26 +1,40 @@
+using System;
 using System.Drawing;
 using OpenTK;
-using Sledge.Editor.Rendering;
 using Sledge.Settings;
+using Sledge.UI;
 
 namespace Sledge.Editor.Tools.Widgets
 {
     public abstract class Widget : BaseTool
     {
-        protected MapViewport _activeViewport;
+        protected ViewportBase _activeViewport;
 
-        public delegate void TransformEventHandler(object sender, Matrix4? transformation);
-        public event TransformEventHandler Transforming;
-        public event TransformEventHandler Transformed;
+        private Action<Matrix4?> _transformedCallback = null;
+        private Action<Matrix4?> _transformingCallback = null;
 
-        protected void OnTransforming(Matrix4? transformation)
+        public Action<Matrix4?> OnTransformed
         {
-            if (Transforming != null) Transforming(this, transformation);
+            get
+            {
+                return _transformedCallback ?? (x => { });
+            }
+            set
+            {
+                _transformedCallback = value;
+            }
         }
 
-        protected void OnTransformed(Matrix4? transformation)
+        public Action<Matrix4?> OnTransforming
         {
-            if (Transformed != null) Transformed(this, transformation);
+            get
+            {
+                return _transformingCallback ?? (x => { });
+            }
+            set
+            {
+                _transformingCallback = value;
+            }
         }
 
         public override Image GetIcon() { return null; }
@@ -29,17 +43,21 @@ namespace Sledge.Editor.Tools.Widgets
         public override string GetContextualHelp() { return ""; }
 
         public override HotkeyInterceptResult InterceptHotkey(HotkeysMediator hotkeyMessage, object parameters) { return HotkeyInterceptResult.Continue; }
+        public override void KeyUp(ViewportBase viewport, ViewportEvent e) { }
+        public override void KeyDown(ViewportBase viewport, ViewportEvent e) { }
+        public override void KeyPress(ViewportBase viewport, ViewportEvent e) { }
+        public override void MouseClick(ViewportBase viewport, ViewportEvent e) { }
+        public override void MouseDoubleClick(ViewportBase viewport, ViewportEvent e) { }
+        public override void UpdateFrame(ViewportBase viewport, FrameInfo frame) { }
 
-        public override void MouseEnter(MapViewport viewport, ViewportEvent e)
+        public override void MouseEnter(ViewportBase viewport, ViewportEvent e)
         {
             _activeViewport = viewport;
-            base.MouseEnter(viewport, e);
         }
 
-        public override void MouseLeave(MapViewport viewport, ViewportEvent e)
+        public override void MouseLeave(ViewportBase viewport, ViewportEvent e)
         {
             _activeViewport = null;
-            base.MouseLeave(viewport, e);
         }
 
         public abstract void SelectionChanged();

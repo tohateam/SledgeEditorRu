@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
+using OpenTK.Graphics;
 using Sledge.DataStructures.Geometric;
 using Sledge.DataStructures.MapObjects;
 using Sledge.DataStructures.Transformations;
@@ -10,17 +11,15 @@ using Sledge.Editor.Actions;
 using Sledge.Editor.Actions.MapObjects.Operations;
 using Sledge.Editor.Actions.MapObjects.Selection;
 using Sledge.Editor.Brushes;
+using Sledge.Editor.Extensions;
 using Sledge.Editor.Properties;
-using Sledge.Editor.Rendering;
-using Sledge.Rendering;
+using Sledge.Editor.Rendering.Immediate;
 using Sledge.Settings;
+using Sledge.UI;
 using Select = Sledge.Settings.Select;
 
 namespace Sledge.Editor.Tools
 {
-    /// <summary>
-    /// EXPERIMENTAL AND NOT UPDATED FOR RENDERING YET
-    /// </summary>
     public class SketchTool : BaseTool
     {
         public enum SketchState
@@ -92,17 +91,17 @@ namespace Sledge.Editor.Tools
             yield return new KeyValuePair<string, Control>(GetName(), BrushManager.SidebarControl);
         }
 
-        public override void MouseEnter(MapViewport viewport, ViewportEvent e)
+        public override void MouseEnter(ViewportBase viewport, ViewportEvent e)
         {
             // 
         }
 
-        public override void MouseLeave(MapViewport viewport, ViewportEvent e)
+        public override void MouseLeave(ViewportBase viewport, ViewportEvent e)
         {
             //
         }
 
-        public override void MouseDown(MapViewport viewport, ViewportEvent e)
+        public override void MouseDown(ViewportBase viewport, ViewportEvent e)
         {
             //
             switch (_state)
@@ -126,7 +125,7 @@ namespace Sledge.Editor.Tools
                     else if (e.Button == MouseButtons.Left)
                     {
                         ExpandBase(_intersection);
-                        _volumePlane = new Plane(_base.Vertices[1], _base.Vertices[2], _base.Vertices[2] + _base.GetPlane().Normal);
+                        _volumePlane = new Plane(_base.Vertices[1], _base.Vertices[2], _base.Vertices[2] + _base.Plane.Normal);
                         _state = SketchState.DrawingVolume;
                     }
                     break;
@@ -139,7 +138,7 @@ namespace Sledge.Editor.Tools
                     else if (e.Button == MouseButtons.Left)
                     {
                         var diff = _intersection - _base.Vertices[2];
-                        var sign = _base.GetPlane().OnPlane(_intersection) < 0 ? -1 : 1;
+                        var sign = _base.Plane.OnPlane(_intersection) < 0 ? -1 : 1;
                         _depth = diff.VectorMagnitude() * sign;
                         CreateBrush(_base, _depth);
                         _base = null;
@@ -173,17 +172,17 @@ namespace Sledge.Editor.Tools
             return null;
         }
 
-        public override void MouseClick(MapViewport viewport, ViewportEvent e)
+        public override void MouseClick(ViewportBase viewport, ViewportEvent e)
         {
             //
         }
 
-        public override void MouseDoubleClick(MapViewport viewport, ViewportEvent e)
+        public override void MouseDoubleClick(ViewportBase viewport, ViewportEvent e)
         {
             //
         }
 
-        public override void MouseUp(MapViewport viewport, ViewportEvent e)
+        public override void MouseUp(ViewportBase viewport, ViewportEvent e)
         {
             switch (_state)
             {
@@ -202,14 +201,14 @@ namespace Sledge.Editor.Tools
                     throw new ArgumentOutOfRangeException();
             }
         }
-        public override void MouseWheel(MapViewport viewport, ViewportEvent e)
+        public override void MouseWheel(ViewportBase viewport, ViewportEvent e)
         {
             //
         }
 
         private void ExpandBase(Coordinate endPoint)
         {
-            var axis = _base.GetPlane().GetClosestAxisToNormal();
+            var axis = _base.Plane.GetClosestAxisToNormal();
             var start = _base.Vertices[0] - _base.Vertices[0].ComponentMultiply(axis);
             var end = endPoint - endPoint.ComponentMultiply(axis);
             var diff = end - start;
@@ -231,14 +230,14 @@ namespace Sledge.Editor.Tools
             }
             var linex = new Line(start + addx, start + addx + axis);
             var liney = new Line(start + addy, start + addy + axis);
-            _base.Vertices[1] = _base.GetPlane().GetIntersectionPoint(linex, true, true);
+            _base.Vertices[1] = _base.Plane.GetIntersectionPoint(linex, true, true);
             _base.Vertices[2] = endPoint;
-            _base.Vertices[3] = _base.GetPlane().GetIntersectionPoint(liney, true, true);
+            _base.Vertices[3] = _base.Plane.GetIntersectionPoint(liney, true, true);
         }
 
-        public override void MouseMove(MapViewport viewport, ViewportEvent e)
+        public override void MouseMove(ViewportBase viewport, ViewportEvent e)
         {
-            var vp = viewport as MapViewport;
+            var vp = viewport as Viewport3D;
             if (vp == null) return;
 
             UpdateCurrentFace(vp, e);
@@ -254,8 +253,8 @@ namespace Sledge.Editor.Tools
                     break;
                 case SketchState.DrawingVolume:
                     var diff = _intersection - _base.Vertices[2];
-                    diff = diff.ComponentMultiply(_base.GetPlane().GetClosestAxisToNormal());
-                    var sign = _base.GetPlane().OnPlane(_intersection) < 0 ? -1 : 1;
+                    diff = diff.ComponentMultiply(_base.Plane.GetClosestAxisToNormal());
+                    var sign = _base.Plane.OnPlane(_intersection) < 0 ? -1 : 1;
                     _depth = diff.VectorMagnitude() * sign;
                     break;
                 default:
@@ -263,7 +262,7 @@ namespace Sledge.Editor.Tools
             }
         }
 
-        private void UpdateCurrentFace(MapViewport viewport, ViewportEvent e)
+        private void UpdateCurrentFace(Viewport3D viewport, ViewportEvent e)
         {
             var ray = viewport.CastRayFromScreen(e.X, e.Y);
 
@@ -304,7 +303,7 @@ namespace Sledge.Editor.Tools
         }
 
 
-        public override void KeyPress(MapViewport viewport, ViewportEvent e)
+        public override void KeyPress(ViewportBase viewport, ViewportEvent e)
         {
             switch (_state)
             {
@@ -321,17 +320,17 @@ namespace Sledge.Editor.Tools
             }
         }
 
-        public override void KeyDown(MapViewport viewport, ViewportEvent e)
+        public override void KeyDown(ViewportBase viewport, ViewportEvent e)
         {
             //
         }
 
-        public override void KeyUp(MapViewport viewport, ViewportEvent e)
+        public override void KeyUp(ViewportBase viewport, ViewportEvent e)
         {
             //
         }
 
-        public override void UpdateFrame(MapViewport viewport, Frame frame)
+        public override void UpdateFrame(ViewportBase viewport, FrameInfo frame)
         {
             //
         }
@@ -340,44 +339,43 @@ namespace Sledge.Editor.Tools
         {
             if (_state == SketchState.None || _state == SketchState.Ready || _base == null) yield break;
 
-            var b = new Face(0) {Plane = _base.GetPlane()};
+            var b = new Face(0) {Plane = _base.Plane};
             b.Vertices.AddRange(_base.Vertices.Select(x => new Vertex(x, b)));
             b.UpdateBoundingBox();
             yield return b;
 
             if (_state != SketchState.DrawingVolume) yield break;
 
-            var t = new Face(0) { Plane = new Plane(_base.GetPlane().Normal, _base.GetPlane().PointOnPlane + _base.GetPlane().Normal * _depth) };
-            t.Vertices.AddRange(_base.Vertices.Select(x => new Vertex(x + _base.GetPlane().Normal * _depth, t)));
+            var t = new Face(0) { Plane = new Plane(_base.Plane.Normal, _base.Plane.PointOnPlane + _base.Plane.Normal * _depth) };
+            t.Vertices.AddRange(_base.Vertices.Select(x => new Vertex(x + _base.Plane.Normal * _depth, t)));
             t.UpdateBoundingBox();
             yield return t;
         }
 
-        public  void Render(MapViewport viewport)
+        public override void Render(ViewportBase viewport)
         {
-            // todo rendering
             // Render
-            //if (_base != null)
-            //{/*
-            //    var faces = _drawing.GetBoxFaces().Select(x =>
-            //    {
-            //        var f = new Face(0) { Plane = new Plane(x[0], x[1], x[2])};
-            //        f.Vertices.AddRange(x.Select(v => new Vertex(v + f.Plane.Normal * 0.1m, f)));
-            //        return f;
-            //    });*
-            //  */
-            //    var vp3 = viewport as MapViewport;
-            //    if (vp3 == null) return;
+            if (_base != null)
+            {/*
+                var faces = _drawing.GetBoxFaces().Select(x =>
+                {
+                    var f = new Face(0) { Plane = new Plane(x[0], x[1], x[2])};
+                    f.Vertices.AddRange(x.Select(v => new Vertex(v + f.Plane.Normal * 0.1m, f)));
+                    return f;
+                });*
+              */
+                var vp3 = viewport as Viewport3D;
+                if (vp3 == null) return;
 
-            //    GL.Disable(EnableCap.CullFace);
-            //    var faces = GetSides().OrderByDescending(x => (vp3.Camera.LookAt.ToCoordinate() - x.BoundingBox.Center).LengthSquared()).ToList();
-            //    //MapObjectRenderer.DrawFilled(faces, Color.FromArgb(64, Color.DodgerBlue), false, false);
-            //    GL.Enable(EnableCap.CullFace);
-            //}
-            //else if (_cloneFace != null)
-            //{
-            //    //MapObjectRenderer.DrawFilled(new[] { _cloneFace }, Color.FromArgb(64, Color.Orange), false, false);
-            //}
+                GL.Disable(EnableCap.CullFace);
+                var faces = GetSides().OrderByDescending(x => (vp3.Camera.LookAt.ToCoordinate() - x.BoundingBox.Center).LengthSquared()).ToList();
+                MapObjectRenderer.DrawFilled(faces, Color.FromArgb(64, Color.DodgerBlue), false, false);
+                GL.Enable(EnableCap.CullFace);
+            }
+            else if (_cloneFace != null)
+            {
+                MapObjectRenderer.DrawFilled(new[] { _cloneFace }, Color.FromArgb(64, Color.Orange), false, false);
+            }
         }
 
         public override HotkeyInterceptResult InterceptHotkey(HotkeysMediator hotkeyMessage, object parameters)

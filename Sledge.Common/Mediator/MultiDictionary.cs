@@ -83,10 +83,5 @@ namespace Sledge.Common.Mediator
             if (this[key].Count == 0) this.Remove(key);
             return true;
         }
-
-        public bool ContainsValue(T key, TK value)
-        {
-            return ContainsKey(key) && this[key].Contains(value);
-        }
     }
 }

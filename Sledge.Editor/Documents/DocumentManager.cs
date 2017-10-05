@@ -1,5 +1,7 @@
+using System;
 using System.Collections.Generic;
 using Sledge.Common.Mediator;
+using Sledge.Editor.Menu;
 using Sledge.Editor.Tools;
 
 namespace Sledge.Editor.Documents
